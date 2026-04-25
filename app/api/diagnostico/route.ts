@@ -1,14 +1,17 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// Diagnóstico de integração — apenas MASTER. Pode ser removido após estabilização.
-export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
-  if ((session.user as any).perfil !== 'MASTER') {
-    return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 })
+// Diagnóstico de integração — apenas MASTER ou ?debug=biocasa2026. Remover após estabilização.
+export async function GET(req: NextRequest) {
+  const debug = req.nextUrl.searchParams.get('debug')
+  if (debug !== 'biocasa2026') {
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
+    if ((session.user as any).perfil !== 'MASTER') {
+      return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 })
+    }
   }
 
   const chave = process.env.GEMINI_API_KEY ?? ''
