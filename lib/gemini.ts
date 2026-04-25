@@ -1,7 +1,12 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai'
 import { prisma } from '@/lib/prisma'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+// Inicialização lazy — garante que a chave é lida em runtime (não no boot do módulo)
+function getGenAI() {
+  const key = process.env.GEMINI_API_KEY
+  if (!key) throw new Error('GEMINI_API_KEY não está configurada nas variáveis de ambiente')
+  return new GoogleGenerativeAI(key)
+}
 
 const SYSTEM_PROMPT = `Você é um especialista em análise de viabilidade imobiliária da Biocasa.
 Seu papel é ajudar a analisar imóveis, terrenos e empreendimentos, fornecendo análises técnicas detalhadas sobre:
@@ -83,6 +88,7 @@ export async function enviarMensagemGemini(
   contexto: ContextoAnalise,
   cidadeId?: string
 ) {
+  const genAI = getGenAI()
   const model = genAI.getGenerativeModel({
     model: 'gemini-1.5-pro',
     systemInstruction: SYSTEM_PROMPT,

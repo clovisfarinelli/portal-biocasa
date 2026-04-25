@@ -141,13 +141,27 @@ export async function POST(req: NextRequest) {
       custoBrl: resultado.custoBrl,
     })
   } catch (error: any) {
-    await prisma.logErro.create({
-      data: {
-        usuarioId: usuario.id,
-        mensagem: 'Erro ao chamar API Gemini',
-        detalhes: error?.message ?? String(error),
-      },
-    })
-    return NextResponse.json({ erro: 'Erro ao processar análise. Tente novamente.' }, { status: 500 })
+    const nome = error?.constructor?.name ?? 'Error'
+    const msg: string = error?.message ?? String(error)
+    const stack = error?.stack?.split('\n').slice(0, 4).join(' | ') ?? ''
+
+    console.error('[analises/POST] ERRO:', nome, msg, stack)
+
+    try {
+      await prisma.logErro.create({
+        data: {
+          usuarioId: usuario.id,
+          mensagem: `[${nome}] Erro ao chamar API Gemini`,
+          detalhes: `${msg}\n\n${stack}`,
+        },
+      })
+    } catch (dbErr: any) {
+      console.error('[analises/POST] falha ao gravar log:', dbErr?.message)
+    }
+
+    return NextResponse.json(
+      { erro: `Erro ao processar análise. [${nome}]: ${msg.slice(0, 200)}` },
+      { status: 500 }
+    )
   }
 }
