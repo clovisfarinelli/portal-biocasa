@@ -1,6 +1,4 @@
-import { type ClassValue, clsx } from 'clsx'
-
-export function cn(...inputs: ClassValue[]) {
+export function cn(...inputs: (string | boolean | null | undefined)[]) {
   return inputs.filter(Boolean).join(' ')
 }
 

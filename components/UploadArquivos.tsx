@@ -13,7 +13,7 @@ interface ArquivoUpload {
 interface Props {
   onArquivosChange: (arquivos: File[]) => void
   analiseId?: string
-  onUploadConcluido: (arquivos: ArquivoUpload[]) => void
+  onUploadConcluido: React.Dispatch<React.SetStateAction<ArquivoUpload[]>>
   maxArquivos?: number
 }
 
