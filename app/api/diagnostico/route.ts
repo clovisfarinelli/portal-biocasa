@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 // Diagnóstico de integração — apenas MASTER ou ?debug=biocasa2026. Remover após estabilização.
 export async function GET(req: NextRequest) {
@@ -22,34 +23,47 @@ export async function GET(req: NextRequest) {
     timestamp: new Date().toISOString(),
   }
 
-  // Testa chamada real ao Gemini com modelo mais leve (flash)
-  try {
-    const { GoogleGenerativeAI } = await import('@google/generative-ai')
-    if (!chave) throw new Error('GEMINI_API_KEY ausente')
+  // Testa todos os candidatos de modelo em sequência
+  const candidatos = [
+    'gemini-2.5-flash',
+    'gemini-2.5-pro',
+    'gemini-2.5-flash-preview-04-17',
+    'gemini-2.5-pro-preview-03-25',
+    'gemini-2.0-flash-lite',
+    'gemini-2.0-flash-001',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro-latest',
+  ]
+
+  const testeModelos: Record<string, any> = {}
+
+  if (!chave) {
+    resultado.modelos_testados = 'GEMINI_API_KEY ausente'
+  } else {
     const genAI = new GoogleGenerativeAI(chave)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
-    const res = await model.generateContent('Responda apenas: OK')
-    resultado.gemini_flash_teste = 'sucesso'
-    resultado.gemini_flash_resposta = res.response.text().slice(0, 80)
-  } catch (e: any) {
-    resultado.gemini_flash_teste = 'falha'
-    resultado.gemini_flash_erro_nome = e?.constructor?.name
-    resultado.gemini_flash_erro_msg = e?.message?.slice(0, 400)
+    for (const nome of candidatos) {
+      try {
+        const model = genAI.getGenerativeModel({ model: nome })
+        const res = await model.generateContent('Responda apenas: OK')
+        testeModelos[nome] = { status: 'ok', resposta: res.response.text().slice(0, 40) }
+        // Para no primeiro que funcionar
+        break
+      } catch (e: any) {
+        const msg: string = e?.message ?? ''
+        // 404 = modelo não existe; 429 = quota; outros = outro problema
+        if (msg.includes('429') || msg.includes('quota')) {
+          testeModelos[nome] = { status: 'quota_excedida' }
+          break
+        }
+        testeModelos[nome] = {
+          status: 'falha',
+          erro: msg.slice(0, 150),
+        }
+      }
+    }
   }
 
-  // Testa modelo pro (o que o chat usa)
-  try {
-    const { GoogleGenerativeAI } = await import('@google/generative-ai')
-    const genAI = new GoogleGenerativeAI(chave)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
-    const res = await model.generateContent('Responda apenas: OK')
-    resultado.gemini_pro_teste = 'sucesso'
-    resultado.gemini_pro_resposta = res.response.text().slice(0, 80)
-  } catch (e: any) {
-    resultado.gemini_pro_teste = 'falha'
-    resultado.gemini_pro_erro_nome = e?.constructor?.name
-    resultado.gemini_pro_erro_msg = e?.message?.slice(0, 400)
-  }
+  resultado.modelos_testados = testeModelos
 
   // Testa conexão com banco
   try {

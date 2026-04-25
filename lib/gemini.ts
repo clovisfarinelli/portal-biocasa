@@ -90,7 +90,7 @@ export async function enviarMensagemGemini(
 ) {
   const genAI = getGenAI()
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     systemInstruction: SYSTEM_PROMPT,
     generationConfig: {
       maxOutputTokens: 8192,
@@ -134,8 +134,8 @@ export async function enviarMensagemGemini(
   const tokensInput = response.usageMetadata?.promptTokenCount ?? 0
   const tokensOutput = response.usageMetadata?.candidatesTokenCount ?? 0
 
-  // Custo Gemini 2.0 Flash: $0.10/1M input, $0.40/1M output
-  const custoUsd = (tokensInput * 0.10 + tokensOutput * 0.40) / 1_000_000
+  // Custo Gemini 2.5 Flash: $0.075/1M input, $0.30/1M output
+  const custoUsd = (tokensInput * 0.075 + tokensOutput * 0.30) / 1_000_000
   const cambio = await obterCambio()
   const custoBrl = custoUsd * cambio
 
