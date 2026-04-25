@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Session } from 'next-auth'
 import ReactMarkdown from 'react-markdown'
@@ -69,11 +69,16 @@ export default function ChatInterface({ session }: { session: Session }) {
   const [validacaoEnviada, setValidacaoEnviada] = useState(false)
   const [tentouEnviar, setTentouEnviar] = useState(false)
 
+  // Dados insuficientes
+  const [mostrarBotoesInsuficiente, setMostrarBotoesInsuficiente] = useState(false)
+  const [highlightUpload, setHighlightUpload] = useState(false)
+
   // Cidades
   const [cidades, setCidades] = useState<Cidade[]>([])
 
   const chatRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const uploadOutroRef = useRef<HTMLDivElement>(null)
 
   // ─── Validação ────────────────────────────────────────────────────────────
   const cidadeOk = cidadeId !== '' || (showNovaCidade && cidadeNova.trim() !== '')
@@ -152,19 +157,24 @@ export default function ChatInterface({ session }: { session: Session }) {
     return nova.id
   }
 
-  async function enviarMensagem() {
-    if (!mensagem.trim() || carregando) return
+  async function enviarMensagem(textoOverride?: string, profundaOverride?: boolean) {
+    const texto = (textoOverride ?? mensagem).trim()
+    if (!texto || carregando) return
 
-    setTentouEnviar(true)
-    if (!podeSendMensagem) return
+    if (!textoOverride) {
+      setTentouEnviar(true)
+      if (!podeSendMensagem) return
+    }
 
+    const profundaUsada = profundaOverride ?? analiseProfunda
     const cidadeIdFinal = await criarCidadeSeNecessario()
-    const novaMensagem = mensagem.trim()
-    setMensagem('')
+    if (!textoOverride) setMensagem('')
     setErroChat('')
+    setMostrarBotoesInsuficiente(false)
     setCarregando(true)
 
-    const novasMensagens: Mensagem[] = [...mensagens, { role: 'user', content: novaMensagem }]
+    const mensagensBase = mensagens
+    const novasMensagens: Mensagem[] = [...mensagensBase, { role: 'user', content: texto }]
     setMensagens(novasMensagens)
 
     try {
@@ -172,13 +182,13 @@ export default function ChatInterface({ session }: { session: Session }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mensagem: novaMensagem,
+          mensagem: texto,
           cidadeId: cidadeIdFinal ?? undefined,
           inscricaoImobiliaria: inscricaoImobiliaria || undefined,
           margemAlvo,
-          analiseProfunda,
+          analiseProfunda: profundaUsada,
           analiseId: analiseId ?? undefined,
-          historico: mensagens,
+          historico: mensagensBase,
           arquivos: [...iptuUpload, ...outrosUpload],
         }),
       })
@@ -186,23 +196,47 @@ export default function ChatInterface({ session }: { session: Session }) {
       const data = await res.json()
       if (!res.ok) {
         setErroChat(data.erro ?? 'Erro ao processar análise')
-        setMensagens(mensagens)
+        setMensagens(mensagensBase)
         return
       }
 
       setAnaliseId(data.analiseId)
       setCustoTotal(prev => prev + (data.custoBrl ?? 0))
-      setMensagens([...novasMensagens, { role: 'model', content: data.resposta }])
 
-      if (mensagens.length === 0) {
+      // Detect insufficient-data marker; strip it before display
+      const respostaRaw: string = data.resposta ?? ''
+      const temSolicitacao = respostaRaw.includes('[SOLICITAR_DOCS]')
+      const respostaLimpa = respostaRaw.replace(/\[SOLICITAR_DOCS\]\s*$/m, '').trim()
+
+      setMensagens([...novasMensagens, { role: 'model', content: respostaLimpa }])
+      setMostrarBotoesInsuficiente(temSolicitacao)
+
+      if (mensagensBase.length === 0) {
         setTimeout(() => setMostrarValidacao(true), 800)
       }
     } catch {
       setErroChat('Erro de conexão. Tente novamente.')
-      setMensagens(mensagens)
+      setMensagens(mensagensBase)
     } finally {
       setCarregando(false)
     }
+  }
+
+  async function autorizarAnaliseProfunda() {
+    setAnaliseProfunda(true)
+    await enviarMensagem(
+      'Análise Profunda autorizada. Por favor, busque na internet os dados necessários e prossiga com a análise completa.',
+      true
+    )
+  }
+
+  function abrirEnviarDocumentos() {
+    setFormAberto(true)
+    setTimeout(() => {
+      uploadOutroRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setHighlightUpload(true)
+      setTimeout(() => setHighlightUpload(false), 2500)
+    }, 150)
   }
 
   async function validarAnalise(valida: boolean) {
@@ -399,7 +433,7 @@ export default function ChatInterface({ session }: { session: Session }) {
               </div>
 
               {/* Outros Documentos */}
-              <div>
+              <div ref={uploadOutroRef} className={`rounded-xl transition-all duration-300 ${highlightUpload ? 'ring-2 ring-dourado-400 ring-offset-2 ring-offset-escuro-600' : ''}`}>
                 <label className="label">
                   Outros Documentos
                   <span className="text-escuro-300 font-normal ml-1">(opcional)</span>
@@ -435,30 +469,61 @@ export default function ChatInterface({ session }: { session: Session }) {
           </div>
         )}
 
-        {mensagens.map((msg, i) => (
-          <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-            <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${
-              msg.role === 'user'
-                ? 'bg-dourado-400/20 text-dourado-400 border border-dourado-400/40'
-                : 'bg-escuro-400 text-escuro-100'
-            }`}>
-              {msg.role === 'user' ? (session.user?.name?.charAt(0).toUpperCase() ?? 'U') : 'IA'}
-            </div>
-            <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-              msg.role === 'user'
-                ? 'bg-dourado-400/10 border border-dourado-400/20 text-white rounded-tr-sm'
-                : 'bg-escuro-500 border border-escuro-400 text-escuro-100 rounded-tl-sm'
-            }`}>
-              {msg.role === 'model' ? (
-                <div className="markdown-content">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+        {mensagens.map((msg, i) => {
+          const isLastModel = msg.role === 'model' && i === mensagens.length - 1
+          return (
+            <Fragment key={i}>
+              <div className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${
+                  msg.role === 'user'
+                    ? 'bg-dourado-400/20 text-dourado-400 border border-dourado-400/40'
+                    : 'bg-escuro-400 text-escuro-100'
+                }`}>
+                  {msg.role === 'user' ? (session.user?.name?.charAt(0).toUpperCase() ?? 'U') : 'IA'}
                 </div>
-              ) : (
-                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                  msg.role === 'user'
+                    ? 'bg-dourado-400/10 border border-dourado-400/20 text-white rounded-tr-sm'
+                    : 'bg-escuro-500 border border-escuro-400 text-escuro-100 rounded-tl-sm'
+                }`}>
+                  {msg.role === 'model' ? (
+                    <div className="markdown-content">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Action buttons when AI signals insufficient data */}
+              {isLastModel && mostrarBotoesInsuficiente && (
+                <div className="ml-11 flex flex-wrap gap-2">
+                  <button
+                    onClick={autorizarAnaliseProfunda}
+                    disabled={carregando}
+                    className="flex items-center gap-2 bg-dourado-400/15 border border-dourado-400/50 hover:bg-dourado-400/25 text-dourado-300 rounded-lg px-3 py-2 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Autorizar Análise Profunda
+                  </button>
+                  <button
+                    onClick={abrirEnviarDocumentos}
+                    disabled={carregando}
+                    className="flex items-center gap-2 bg-escuro-500 border border-escuro-400 hover:bg-escuro-400 text-escuro-100 rounded-lg px-3 py-2 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    Enviar Documentos
+                  </button>
+                </div>
               )}
-            </div>
-          </div>
-        ))}
+            </Fragment>
+          )
+        })}
 
         {carregando && (
           <div className="flex gap-3">
@@ -541,7 +606,7 @@ export default function ChatInterface({ session }: { session: Session }) {
             disabled={carregando}
           />
           <button
-            onClick={enviarMensagem}
+            onClick={() => enviarMensagem()}
             disabled={carregando || !mensagem.trim()}
             className="btn-primary h-[48px] w-[48px] flex items-center justify-center rounded-xl flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             title={podeSendMensagem ? 'Enviar' : mensagemBloqueio}

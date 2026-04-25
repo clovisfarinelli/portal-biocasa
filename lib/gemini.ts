@@ -20,7 +20,14 @@ FLUXO OBRIGATÓRIO:
 2. Liste os dados extraídos antes de iniciar a análise
 3. Consulte a legislação da cidade no banco de dados
 4. Faça os cálculos com os dados REAIS
-5. Apresente a DRE com base nos dados reais`
+5. Apresente a DRE com base nos dados reais
+
+PROTOCOLO PARA DADOS INSUFICIENTES:
+Quando não houver documentos suficientes no banco de dados E nenhum arquivo relevante foi enviado para realizar a análise, siga EXATAMENTE este protocolo:
+1. Liste claramente o que está faltando: "Preciso de: [documento X], [dado Y]"
+2. Explique as opções: "Você pode enviar o documento diretamente no chat (botão 'Enviar Documentos') ou autorizar a Análise Profunda para que eu busque na internet (botão 'Autorizar Análise Profunda')"
+3. OBRIGATÓRIO: ao final da sua resposta, em linha separada, inclua exatamente: [SOLICITAR_DOCS]
+Não inclua [SOLICITAR_DOCS] em nenhuma outra situação — apenas quando dados críticos estiverem realmente ausentes e a análise não puder prosseguir.`
 
 export interface MensagemChat {
   role: 'user' | 'model'
@@ -136,7 +143,8 @@ export async function enviarMensagemGemini(
   mensagens: MensagemChat[],
   contexto: ContextoAnalise,
   cidadeId?: string,
-  arquivos: ArquivoParaGemini[] = []
+  arquivos: ArquivoParaGemini[] = [],
+  analiseProfunda = false
 ) {
   const genAI = getGenAI()
   const model = genAI.getGenerativeModel({
@@ -150,6 +158,7 @@ export async function enviarMensagemGemini(
       { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
       { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
     ],
+    tools: analiseProfunda ? [{ googleSearchRetrieval: {} }] : undefined,
   })
 
   const [documentosCtx, aprendizadosCtx, partesArquivos] = await Promise.all([

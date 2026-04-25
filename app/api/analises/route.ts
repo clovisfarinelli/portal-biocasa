@@ -136,13 +136,17 @@ export async function POST(req: NextRequest) {
         margemAlvo: dados.margemAlvo,
       },
       cidadeId,
-      arquivosDoTurno
+      arquivosDoTurno,
+      dados.analiseProfunda
     )
+
+    // Remove the [SOLICITAR_DOCS] marker before storing so it doesn't pollute the history
+    const textoArmazenado = resultado.texto.replace(/\[SOLICITAR_DOCS\]\s*$/m, '').trim()
 
     const novoHistorico = [
       ...dados.historico,
       { role: 'user' as const, content: dados.mensagem },
-      { role: 'model' as const, content: resultado.texto },
+      { role: 'model' as const, content: textoArmazenado },
     ]
 
     let analise
