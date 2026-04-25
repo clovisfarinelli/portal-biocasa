@@ -12,6 +12,7 @@ interface Analise {
   id: string
   criadoEm: string
   inscricaoImobiliaria?: string
+  statusValidacao: string
   cidade?: { nome: string }
   usuario?: { nome: string }
   unidade?: { nome: string }
@@ -140,26 +141,42 @@ export default function Sidebar({ session }: { session: Session }) {
             <p className="text-xs text-escuro-300 px-1 italic">Nenhuma análise ainda</p>
           ) : (
             <div className="space-y-1">
-              {historico.map(analise => (
-                <Link
-                  key={analise.id}
-                  href={`/chat?analise=${analise.id}`}
-                  className="block px-3 py-2 rounded-lg hover:bg-escuro-500 transition-colors group"
-                >
-                  <p className="text-xs text-white truncate group-hover:text-dourado-300 transition-colors font-medium">
-                    {analise.inscricaoImobiliaria ?? 'Análise sem inscrição'}
-                  </p>
-                  <p className="text-[11px] text-escuro-300 truncate">
-                    {analise.cidade?.nome ?? 'Sem cidade'} · {new Date(analise.criadoEm).toLocaleDateString('pt-BR')}
-                  </p>
-                  {(analise.usuario?.nome || analise.unidade?.nome) && (
-                    <p className="text-[11px] text-escuro-400 truncate">
-                      {primeiroNome(analise.usuario?.nome)}
-                      {analise.unidade?.nome ? ` · ${analise.unidade.nome}` : ''}
+              {historico.map(analise => {
+                const invalida = analise.statusValidacao === 'INVALIDA'
+                const valida   = analise.statusValidacao === 'VALIDA'
+                const corTitulo = invalida
+                  ? 'text-red-400 group-hover:text-red-300'
+                  : valida
+                    ? 'text-dourado-300 group-hover:text-dourado-200'
+                    : 'text-white group-hover:text-dourado-300'
+                return (
+                  <Link
+                    key={analise.id}
+                    href={`/chat?analise=${analise.id}`}
+                    className="block px-3 py-2 rounded-lg hover:bg-escuro-500 transition-colors group"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      {invalida && (
+                        <svg className="w-3 h-3 text-red-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      <p className={`text-xs truncate font-medium transition-colors ${corTitulo}`}>
+                        {analise.inscricaoImobiliaria ?? 'Análise sem inscrição'}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-escuro-300 truncate">
+                      {analise.cidade?.nome ?? 'Sem cidade'} · {new Date(analise.criadoEm).toLocaleDateString('pt-BR')}
                     </p>
-                  )}
-                </Link>
-              ))}
+                    {(analise.usuario?.nome || analise.unidade?.nome) && (
+                      <p className="text-[11px] text-escuro-400 truncate">
+                        {primeiroNome(analise.usuario?.nome)}
+                        {analise.unidade?.nome ? ` · ${analise.unidade.nome}` : ''}
+                      </p>
+                    )}
+                  </Link>
+                )
+              })}
             </div>
           )}
         </div>

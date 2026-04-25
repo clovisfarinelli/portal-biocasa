@@ -35,11 +35,12 @@ export async function GET(req: NextRequest) {
   const porPagina = 20
   const skip = (pagina - 1) * porPagina
 
-  const proprio       = searchParams.get('proprio') === 'true'
-  const filtroUnidade = searchParams.get('unidadeId')
-  const filtroUsr     = searchParams.get('usuarioId')
-  const filtroMes     = searchParams.get('mes')           // YYYY-MM
-  const porPaginaReq  = Math.min(parseInt(searchParams.get('porPagina') ?? '20'), 200)
+  const proprio           = searchParams.get('proprio') === 'true'
+  const filtroUnidade     = searchParams.get('unidadeId')
+  const filtroUsr         = searchParams.get('usuarioId')
+  const filtroMes         = searchParams.get('mes')           // YYYY-MM
+  const filtroStatus      = searchParams.get('statusValidacao') // PENDENTE | VALIDA | INVALIDA
+  const porPaginaReq      = Math.min(parseInt(searchParams.get('porPagina') ?? '20'), 200)
 
   const filtro: any = {}
 
@@ -58,6 +59,8 @@ export async function GET(req: NextRequest) {
     const [ano, mes] = filtroMes.split('-').map(Number)
     filtro.criadoEm = { gte: new Date(ano, mes - 1, 1), lt: new Date(ano, mes, 1) }
   }
+
+  if (filtroStatus) filtro.statusValidacao = filtroStatus
 
   const limite = porPaginaReq || porPagina
 

@@ -22,13 +22,15 @@ interface Documento {
   cidade?: { nome: string }
 }
 
-interface Aprendizado {
+interface AnaliseInvalida {
   id: string
-  resumo: string
-  ativo: boolean
   criadoEm: string
+  inscricaoImobiliaria?: string
+  motivoInvalidacao?: string
+  statusValidacao: string
   cidade?: { nome: string }
-  analise: { inscricaoImobiliaria?: string; motivoInvalidacao?: string }
+  usuario?: { nome: string }
+  unidade?: { nome: string }
 }
 
 interface LogErro {
@@ -55,7 +57,7 @@ export default function TreinarIA({ session }: { session: Session }) {
   const [cidades, setCidades] = useState<Cidade[]>([])
   const [cidadeSelecionada, setCidadeSelecionada] = useState('')
   const [documentos, setDocumentos] = useState<Documento[]>([])
-  const [aprendizados, setAprendizados] = useState<Aprendizado[]>([])
+  const [analisesInvalidas, setAnalisesInvalidas] = useState<AnaliseInvalida[]>([])
   const [logs, setLogs] = useState<LogErro[]>([])
   const [carregando, setCarregando] = useState(false)
 
@@ -87,10 +89,10 @@ export default function TreinarIA({ session }: { session: Session }) {
       const res = await fetch(`/api/documentos?cidadeId=${cidadeSelecionada}&categoria=CIDADE`)
       if (res.ok) setDocumentos(await res.json())
     } else if (aba === 'aprendizados') {
-      const res = await fetch('/api/analises?status=INVALIDA')
+      const res = await fetch('/api/analises?statusValidacao=INVALIDA&porPagina=100')
       if (res.ok) {
         const data = await res.json()
-        setAprendizados(data.aprendizados ?? [])
+        setAnalisesInvalidas(data.analises ?? [])
       }
     } else if (aba === 'logs') {
       const res = await fetch('/api/logs-erro')
@@ -127,6 +129,16 @@ export default function TreinarIA({ session }: { session: Session }) {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ativo: !ativo }),
+    })
+    carregarDocumentos()
+  }
+
+  async function reativarAnalise(id: string) {
+    if (!confirm('Marcar esta análise como válida e adicionar ao aprendizado?')) return
+    await fetch(`/api/analises/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ statusValidacao: 'VALIDA' }),
     })
     carregarDocumentos()
   }
@@ -275,32 +287,64 @@ export default function TreinarIA({ session }: { session: Session }) {
         </div>
       )}
 
-      {/* Aprendizados */}
+      {/* Aprendizados — análises inválidas para revisão */}
       {aba === 'aprendizados' && (
         <div>
-          <h2 className="text-lg font-semibold text-white mb-4">Análises Inválidas para Revisão</h2>
-          {aprendizados.length === 0 ? (
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-white">Análises Rejeitadas para Revisão</h2>
+            <span className="text-xs text-escuro-300">{analisesInvalidas.length} análise(s)</span>
+          </div>
+          {carregando ? (
+            <div className="card p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-dourado-400 mx-auto" />
+            </div>
+          ) : analisesInvalidas.length === 0 ? (
             <div className="card p-8 text-center text-escuro-300 text-sm">
-              Nenhuma análise inválida pendente de revisão
+              Nenhuma análise rejeitada pendente de revisão
             </div>
           ) : (
             <div className="space-y-3">
-              {aprendizados.map(ap => (
-                <div key={ap.id} className="card">
+              {analisesInvalidas.map(a => (
+                <div key={a.id} className="card border-l-4 border-red-700">
                   <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm text-white font-medium mb-1">
-                        {ap.analise?.inscricaoImobiliaria ?? 'Análise sem inscrição'}
-                        {ap.cidade && <span className="text-escuro-300 ml-2">— {ap.cidade.nome}</span>}
-                      </p>
-                      {ap.analise?.motivoInvalidacao && (
-                        <p className="text-xs text-red-300 mb-2">Motivo: {ap.analise.motivoInvalidacao}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <p className="text-sm text-white font-medium">
+                          {a.inscricaoImobiliaria ?? 'Sem inscrição'}
+                        </p>
+                        {a.cidade && (
+                          <span className="text-xs text-escuro-300">— {a.cidade.nome}</span>
+                        )}
+                        {a.unidade && (
+                          <span className="text-xs bg-escuro-500 text-escuro-200 px-2 py-0.5 rounded-full">
+                            {a.unidade.nome}
+                          </span>
+                        )}
+                      </div>
+                      {a.usuario && (
+                        <p className="text-xs text-escuro-300 mb-1">
+                          Analista: <span className="text-escuro-100">{a.usuario.nome}</span>
+                        </p>
                       )}
-                      <p className="text-xs text-escuro-300">{formatarData(ap.criadoEm)}</p>
+                      {a.motivoInvalidacao ? (
+                        <p className="text-xs text-red-300 mb-1">
+                          Motivo: {a.motivoInvalidacao}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-escuro-400 italic mb-1">Sem motivo informado</p>
+                      )}
+                      <p className="text-xs text-escuro-400">{formatarData(a.criadoEm)}</p>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${ap.ativo ? 'bg-green-900/30 text-green-300' : 'bg-red-900/30 text-red-300'}`}>
-                      {ap.ativo ? 'Ativo' : 'Inativo'}
-                    </span>
+                    <button
+                      onClick={() => reativarAnalise(a.id)}
+                      className="flex-shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-green-900/30 border border-green-700 text-green-300 hover:bg-green-800/40 transition-colors"
+                      title="Aprovar manualmente como análise válida"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Reativar como válida
+                    </button>
                   </div>
                 </div>
               ))}
