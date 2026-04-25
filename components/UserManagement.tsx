@@ -64,6 +64,27 @@ export default function UserManagement({ session }: { session: Session }) {
     unidadeId: operador.unidadeId ?? '',
   })
 
+  // ── Filtros e ordenação (MASTER) ─────────────────────────────────────────
+  const [filtroUnidade, setFiltroUnidade] = useState('')
+  const [filtroPerfil, setFiltroPerfil] = useState('')
+  const [ordenacao, setOrdenacao] = useState<'perfil' | 'recente' | 'nome' | 'consumo'>('perfil')
+
+  const ordemPerfil: Record<string, number> = { MASTER: 0, PROPRIETARIO: 1, ESPECIALISTA: 2 }
+
+  const usuariosFiltrados = usuarios
+    .filter(u => !filtroUnidade || u.unidade?.nome === filtroUnidade || (filtroUnidade === '__sem__' && !u.unidade))
+    .filter(u => !filtroPerfil || u.perfil === filtroPerfil)
+    .sort((a, b) => {
+      if (ordenacao === 'perfil') {
+        const diff = (ordemPerfil[a.perfil] ?? 9) - (ordemPerfil[b.perfil] ?? 9)
+        return diff !== 0 ? diff : a.nome.localeCompare(b.nome, 'pt-BR')
+      }
+      if (ordenacao === 'recente') return new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime()
+      if (ordenacao === 'nome') return a.nome.localeCompare(b.nome, 'pt-BR')
+      if (ordenacao === 'consumo') return (b.custoMes ?? 0) - (a.custoMes ?? 0)
+      return 0
+    })
+
   // ── Estado Unidades ──────────────────────────────────────────────────────
   const [unidades, setUnidades] = useState<Unidade[]>([])
   const [carregandoUnidades, setCarregandoUnidades] = useState(false)
@@ -319,6 +340,56 @@ export default function UserManagement({ session }: { session: Session }) {
         </div>
       )}
 
+      {/* ── Filtros (MASTER) ── */}
+      {isMaster && aba === 'usuarios' && (
+        <div className="flex flex-wrap gap-3 mb-4">
+          <select
+            value={filtroUnidade}
+            onChange={e => setFiltroUnidade(e.target.value)}
+            className="input-field w-auto text-sm py-2"
+          >
+            <option value="">Todas as unidades</option>
+            {unidadesSelect.map(u => (
+              <option key={u.id} value={u.nome}>{u.nome}</option>
+            ))}
+            <option value="__sem__">Sem unidade</option>
+          </select>
+
+          <select
+            value={filtroPerfil}
+            onChange={e => setFiltroPerfil(e.target.value)}
+            className="input-field w-auto text-sm py-2"
+          >
+            <option value="">Todos os perfis</option>
+            {PERFIS.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+
+          <select
+            value={ordenacao}
+            onChange={e => setOrdenacao(e.target.value as typeof ordenacao)}
+            className="input-field w-auto text-sm py-2"
+          >
+            <option value="perfil">Ordenar: Perfil + Nome</option>
+            <option value="recente">Ordenar: Mais recente</option>
+            <option value="nome">Ordenar: Nome A-Z</option>
+            <option value="consumo">Ordenar: Maior consumo</option>
+          </select>
+
+          {(filtroUnidade || filtroPerfil) && (
+            <button
+              onClick={() => { setFiltroUnidade(''); setFiltroPerfil('') }}
+              className="text-xs text-escuro-300 hover:text-white px-3 py-2 rounded-lg border border-escuro-500 hover:border-escuro-400 transition-colors"
+            >
+              Limpar filtros
+            </button>
+          )}
+
+          <span className="text-xs text-escuro-300 self-center ml-auto">
+            {usuariosFiltrados.length} de {usuarios.length} usuários
+          </span>
+        </div>
+      )}
+
       {/* ── Aba Usuários ── */}
       {aba === 'usuarios' && (
         <div className="card overflow-hidden p-0">
@@ -342,7 +413,7 @@ export default function UserManagement({ session }: { session: Session }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-escuro-500">
-                  {usuarios.map(u => (
+                  {usuariosFiltrados.map(u => (
                     <tr key={u.id} className="hover:bg-escuro-500/30 transition-colors">
                       <td className="px-4 py-3 text-sm text-white font-medium">{u.nome}</td>
                       <td className="px-4 py-3 text-sm text-escuro-200">{u.email}</td>
@@ -387,7 +458,11 @@ export default function UserManagement({ session }: { session: Session }) {
                   ))}
                 </tbody>
               </table>
-              {usuarios.length === 0 && <div className="p-8 text-center text-escuro-300 text-sm">Nenhum usuário encontrado</div>}
+              {usuariosFiltrados.length === 0 && (
+                <div className="p-8 text-center text-escuro-300 text-sm">
+                  {usuarios.length === 0 ? 'Nenhum usuário encontrado' : 'Nenhum usuário corresponde aos filtros'}
+                </div>
+              )}
             </div>
           )}
         </div>

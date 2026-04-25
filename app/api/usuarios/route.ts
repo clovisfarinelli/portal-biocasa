@@ -24,9 +24,9 @@ export async function GET(req: NextRequest) {
 
   const filtro: any = {}
   if (usuario.perfil === 'PROPRIETARIO') {
-    // Sem unidadeId no token → não expõe nenhum usuário
     if (!usuario.unidadeId) return NextResponse.json([])
     filtro.unidadeId = usuario.unidadeId
+    filtro.perfil = { notIn: ['MASTER'] }   // PROPRIETARIO nunca vê usuários MASTER
   }
 
   const inicio = new Date()
