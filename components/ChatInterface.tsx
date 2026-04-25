@@ -177,8 +177,9 @@ export default function ChatInterface({ session }: { session: Session }) {
           inscricaoImobiliaria: inscricaoImobiliaria || undefined,
           margemAlvo,
           analiseProfunda,
-          analiseId,
+          analiseId: analiseId ?? undefined,
           historico: mensagens,
+          arquivos: [...iptuUpload, ...outrosUpload],
         }),
       })
 

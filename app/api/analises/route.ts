@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { enviarMensagemGemini } from '@/lib/gemini'
+import { enviarMensagemGemini, ArquivoParaGemini } from '@/lib/gemini'
 import { z } from 'zod'
+
+const schemaArquivo = z.object({
+  url: z.string(),
+  tipo: z.string(),
+  nome: z.string(),
+})
 
 const schemaNovaAnalise = z.object({
   mensagem: z.string().min(1),
@@ -11,11 +17,12 @@ const schemaNovaAnalise = z.object({
   inscricaoImobiliaria: z.string().nullish(),
   margemAlvo: z.number().optional(),
   analiseProfunda: z.boolean().default(false),
-  analiseId: z.string().nullish(),   // null é válido (análise ainda não criada)
+  analiseId: z.string().nullish(),
   historico: z.array(z.object({
     role: z.enum(['user', 'model']),
     content: z.string(),
   })).default([]),
+  arquivos: z.array(schemaArquivo).default([]),
 })
 
 export async function GET(req: NextRequest) {
@@ -92,6 +99,13 @@ export async function POST(req: NextRequest) {
       ? await prisma.cidade.findUnique({ where: { id: cidadeId } })
       : null
 
+    // Consolida arquivos: os enviados agora + os já salvos nesta análise (turnos anteriores)
+    let arquivosDoTurno: ArquivoParaGemini[] = dados.arquivos
+    if (analiseId && dados.arquivos.length === 0) {
+      const salvos = await prisma.arquivoAnalise.findMany({ where: { analiseId } })
+      arquivosDoTurno = salvos.map(a => ({ url: a.arquivoUrl, tipo: a.tipo, nome: a.nomeArquivo }))
+    }
+
     const resultado = await enviarMensagemGemini(
       [...dados.historico, { role: 'user', content: dados.mensagem }],
       {
@@ -99,7 +113,8 @@ export async function POST(req: NextRequest) {
         inscricaoImobiliaria: dados.inscricaoImobiliaria ?? undefined,
         margemAlvo: dados.margemAlvo,
       },
-      cidadeId
+      cidadeId,
+      arquivosDoTurno
     )
 
     const novoHistorico = [
