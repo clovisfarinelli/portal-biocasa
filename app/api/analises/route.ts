@@ -35,19 +35,38 @@ export async function GET(req: NextRequest) {
   const porPagina = 20
   const skip = (pagina - 1) * porPagina
 
+  const proprio       = searchParams.get('proprio') === 'true'
+  const filtroUnidade = searchParams.get('unidadeId')
+  const filtroUsr     = searchParams.get('usuarioId')
+  const filtroMes     = searchParams.get('mes')           // YYYY-MM
+  const porPaginaReq  = Math.min(parseInt(searchParams.get('porPagina') ?? '20'), 200)
+
   const filtro: any = {}
+
   if (usuario.perfil === 'ESPECIALISTA') {
     filtro.usuarioId = usuario.id
   } else if (usuario.perfil === 'PROPRIETARIO') {
     filtro.unidadeId = usuario.unidadeId
+  } else {
+    // MASTER: sidebar usa ?proprio=true para ver só a sua unidade
+    if (proprio && usuario.unidadeId) filtro.unidadeId = usuario.unidadeId
+    if (filtroUnidade) filtro.unidadeId = filtroUnidade
+    if (filtroUsr)     filtro.usuarioId = filtroUsr
   }
+
+  if (filtroMes) {
+    const [ano, mes] = filtroMes.split('-').map(Number)
+    filtro.criadoEm = { gte: new Date(ano, mes - 1, 1), lt: new Date(ano, mes, 1) }
+  }
+
+  const limite = porPaginaReq || porPagina
 
   const [analises, total] = await Promise.all([
     prisma.analise.findMany({
       where: filtro,
       orderBy: { criadoEm: 'desc' },
       skip,
-      take: porPagina,
+      take: limite,
       include: {
         usuario: { select: { nome: true } },
         cidade: { select: { nome: true } },

@@ -5,6 +5,7 @@ export const config = {
     '/chat/:path*',
     '/usuarios/:path*',
     '/treinar-ia/:path*',
+    '/analises-unidades/:path*',
     '/api/analises/:path*',
     '/api/usuarios/:path*',
     '/api/documentos/:path*',
