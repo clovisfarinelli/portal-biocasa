@@ -7,11 +7,11 @@ import { z } from 'zod'
 
 const schemaNovaAnalise = z.object({
   mensagem: z.string().min(1),
-  cidadeId: z.string().optional(),
-  inscricaoImobiliaria: z.string().optional(),
+  cidadeId: z.string().nullish(),
+  inscricaoImobiliaria: z.string().nullish(),
   margemAlvo: z.number().optional(),
   analiseProfunda: z.boolean().default(false),
-  analiseId: z.string().optional(),
+  analiseId: z.string().nullish(),   // null é válido (análise ainda não criada)
   historico: z.array(z.object({
     role: z.enum(['user', 'model']),
     content: z.string(),
@@ -58,8 +58,18 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
 
   const usuario = session.user as any
-  const body = await req.json()
-  const dados = schemaNovaAnalise.parse(body)
+
+  let dados: z.infer<typeof schemaNovaAnalise>
+  try {
+    const body = await req.json()
+    dados = schemaNovaAnalise.parse(body)
+  } catch (parseErr: any) {
+    console.error('[analises/POST] body inválido:', parseErr?.message)
+    return NextResponse.json(
+      { erro: `Dados inválidos: ${parseErr?.message?.slice(0, 200)}` },
+      { status: 400 }
+    )
+  }
 
   // Verifica limite da unidade para PROPRIETARIO e ESPECIALISTA
   if (usuario.perfil !== 'MASTER' && usuario.unidadeId) {
@@ -75,18 +85,21 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const cidade = dados.cidadeId
-      ? await prisma.cidade.findUnique({ where: { id: dados.cidadeId } })
+    const cidadeId = dados.cidadeId ?? undefined
+    const analiseId = dados.analiseId ?? undefined
+
+    const cidade = cidadeId
+      ? await prisma.cidade.findUnique({ where: { id: cidadeId } })
       : null
 
     const resultado = await enviarMensagemGemini(
       [...dados.historico, { role: 'user', content: dados.mensagem }],
       {
         cidade: cidade?.nome,
-        inscricaoImobiliaria: dados.inscricaoImobiliaria,
+        inscricaoImobiliaria: dados.inscricaoImobiliaria ?? undefined,
         margemAlvo: dados.margemAlvo,
       },
-      dados.cidadeId
+      cidadeId
     )
 
     const novoHistorico = [
@@ -96,9 +109,9 @@ export async function POST(req: NextRequest) {
     ]
 
     let analise
-    if (dados.analiseId) {
+    if (analiseId) {
       analise = await prisma.analise.update({
-        where: { id: dados.analiseId },
+        where: { id: analiseId },
         data: {
           conteudoConversa: novoHistorico,
           tokensInput: { increment: resultado.tokensInput },
@@ -112,8 +125,8 @@ export async function POST(req: NextRequest) {
         data: {
           usuarioId: usuario.id,
           unidadeId: usuario.unidadeId ?? null,
-          cidadeId: dados.cidadeId ?? null,
-          inscricaoImobiliaria: dados.inscricaoImobiliaria,
+          cidadeId: cidadeId ?? null,
+          inscricaoImobiliaria: dados.inscricaoImobiliaria ?? null,
           margemAlvo: dados.margemAlvo ?? 20,
           analiseProfunda: dados.analiseProfunda,
           conteudoConversa: novoHistorico,
