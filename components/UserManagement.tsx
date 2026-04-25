@@ -9,6 +9,17 @@ interface Unidade {
   nome: string
   estado: string
   limiteAnalises: number
+  analisesMes: number
+  ativo: boolean
+  criadoEm: string
+  proprietario: { id: string; nome: string; email: string; ativo: boolean } | null
+}
+
+interface UnidadeSimples {
+  id: string
+  nome: string
+  estado: string
+  limiteAnalises: number
 }
 
 interface Usuario {
@@ -23,50 +34,77 @@ interface Usuario {
   custoMes: number
 }
 
-interface Props {
-  session: Session
-}
-
 const PERFIS = ['MASTER', 'PROPRIETARIO', 'ESPECIALISTA'] as const
 
-export default function UserManagement({ session }: Props) {
+const corPerfil: Record<string, string> = {
+  MASTER: 'text-red-300 bg-red-900/30 border border-red-800',
+  PROPRIETARIO: 'text-dourado-300 bg-dourado-400/10 border border-dourado-400/30',
+  ESPECIALISTA: 'text-blue-300 bg-blue-900/30 border border-blue-800',
+}
+
+export default function UserManagement({ session }: { session: Session }) {
   const operador = session.user as any
   const perfil = operador.perfil as string
+  const isMaster = perfil === 'MASTER'
 
+  const [aba, setAba] = useState<'usuarios' | 'unidades'>('usuarios')
+
+  // ── Estado Usuários ──────────────────────────────────────────────────────
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
-  const [unidades, setUnidades] = useState<Unidade[]>([])
-  const [carregando, setCarregando] = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [editando, setEditando] = useState<Usuario | null>(null)
-  const [erro, setErro] = useState('')
+  const [unidadesSelect, setUnidadesSelect] = useState<UnidadeSimples[]>([])
+  const [carregandoUsuarios, setCarregandoUsuarios] = useState(true)
+  const [showModalUsuario, setShowModalUsuario] = useState(false)
+  const [editandoUsuario, setEditandoUsuario] = useState<Usuario | null>(null)
+  const [erroUsuario, setErroUsuario] = useState('')
   const [cambioDolar, setCambioDolar] = useState('5.50')
 
-  // Formulário
-  const [form, setForm] = useState({
+  const [formUsuario, setFormUsuario] = useState({
     nome: '', email: '', senha: '',
-    perfil: perfil === 'PROPRIETARIO' ? 'ESPECIALISTA' : 'ESPECIALISTA',
+    perfil: 'ESPECIALISTA',
     unidadeId: operador.unidadeId ?? '',
-    limiteAnalises: 50,
   })
 
+  // ── Estado Unidades ──────────────────────────────────────────────────────
+  const [unidades, setUnidades] = useState<Unidade[]>([])
+  const [carregandoUnidades, setCarregandoUnidades] = useState(false)
+  const [showModalUnidade, setShowModalUnidade] = useState(false)
+  const [editandoUnidade, setEditandoUnidade] = useState<Unidade | null>(null)
+  const [erroUnidade, setErroUnidade] = useState('')
+
+  const [formUnidade, setFormUnidade] = useState({
+    nome: '',
+    limiteAnalises: 50,
+    nomeProprietario: '',
+    emailProprietario: '',
+    senhaProprietario: '',
+  })
+
+  // ── Effects ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    carregarDados()
-    if (perfil === 'MASTER') {
+    carregarUsuarios()
+    if (isMaster) {
       carregarCambio()
-      carregarUnidades()
+      carregarUnidadesSelect()
     }
   }, [])
 
-  async function carregarDados() {
-    setCarregando(true)
+  useEffect(() => {
+    if (isMaster && aba === 'unidades' && unidades.length === 0) {
+      carregarUnidades()
+    }
+  }, [aba])
+
+  // ── Funções Usuários ─────────────────────────────────────────────────────
+  async function carregarUsuarios() {
+    setCarregandoUsuarios(true)
     const res = await fetch('/api/usuarios')
     if (res.ok) setUsuarios(await res.json())
-    setCarregando(false)
+    setCarregandoUsuarios(false)
   }
 
-  async function carregarUnidades() {
+  async function carregarUnidadesSelect() {
     const res = await fetch('/api/unidades')
-    if (res.ok) setUnidades(await res.json())
+    if (res.ok) setUnidadesSelect(await res.json())
   }
 
   async function carregarCambio() {
@@ -87,17 +125,17 @@ export default function UserManagement({ session }: Props) {
   }
 
   async function salvarUsuario() {
-    setErro('')
+    setErroUsuario('')
     try {
-      const url = editando ? `/api/usuarios/${editando.id}` : '/api/usuarios'
-      const method = editando ? 'PATCH' : 'POST'
+      const url = editandoUsuario ? `/api/usuarios/${editandoUsuario.id}` : '/api/usuarios'
+      const method = editandoUsuario ? 'PATCH' : 'POST'
       const body: any = {
-        nome: form.nome,
-        email: form.email,
-        perfil: form.perfil,
-        unidadeId: form.unidadeId || undefined,
+        nome: formUsuario.nome,
+        email: formUsuario.email,
+        perfil: formUsuario.perfil,
+        unidadeId: formUsuario.unidadeId || undefined,
       }
-      if (form.senha) body.senha = form.senha
+      if (formUsuario.senha) body.senha = formUsuario.senha
 
       const res = await fetch(url, {
         method,
@@ -107,54 +145,117 @@ export default function UserManagement({ session }: Props) {
 
       if (!res.ok) {
         const data = await res.json()
-        setErro(data.erro ?? 'Erro ao salvar usuário')
+        setErroUsuario(data.erro ?? 'Erro ao salvar usuário')
         return
       }
 
-      setShowModal(false)
-      setEditando(null)
-      resetForm()
-      carregarDados()
+      setShowModalUsuario(false)
+      setEditandoUsuario(null)
+      resetFormUsuario()
+      carregarUsuarios()
     } catch {
-      setErro('Erro de conexão')
+      setErroUsuario('Erro de conexão')
     }
   }
 
-  async function excluirUsuario(id: string) {
-    if (!confirm('Deseja desativar este usuário?')) return
-    await fetch(`/api/usuarios/${id}`, { method: 'DELETE' })
-    carregarDados()
+  async function toggleUsuario(u: Usuario) {
+    const acao = u.ativo ? 'desativar' : 'reativar'
+    if (!confirm(`Deseja ${acao} o usuário ${u.nome}?`)) return
+    if (u.ativo) {
+      await fetch(`/api/usuarios/${u.id}`, { method: 'DELETE' })
+    } else {
+      await fetch(`/api/usuarios/${u.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ativo: true }),
+      })
+    }
+    carregarUsuarios()
   }
 
-  function abrirEdicao(u: Usuario) {
-    setEditando(u)
-    setForm({
-      nome: u.nome,
-      email: u.email,
-      senha: '',
-      perfil: u.perfil,
-      unidadeId: '',
-      limiteAnalises: 50,
+  function abrirEdicaoUsuario(u: Usuario) {
+    setEditandoUsuario(u)
+    setFormUsuario({ nome: u.nome, email: u.email, senha: '', perfil: u.perfil, unidadeId: '' })
+    setShowModalUsuario(true)
+  }
+
+  function resetFormUsuario() {
+    setFormUsuario({ nome: '', email: '', senha: '', perfil: 'ESPECIALISTA', unidadeId: operador.unidadeId ?? '' })
+    setErroUsuario('')
+  }
+
+  // ── Funções Unidades ─────────────────────────────────────────────────────
+  async function carregarUnidades() {
+    setCarregandoUnidades(true)
+    const res = await fetch('/api/unidades')
+    if (res.ok) setUnidades(await res.json())
+    setCarregandoUnidades(false)
+  }
+
+  async function salvarUnidade() {
+    setErroUnidade('')
+    try {
+      if (editandoUnidade) {
+        // Edição: apenas nome e limite
+        const res = await fetch(`/api/unidades/${editandoUnidade.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: formUnidade.nome,
+            limiteAnalises: formUnidade.limiteAnalises,
+          }),
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          setErroUnidade(data.erro ?? 'Erro ao salvar')
+          return
+        }
+      } else {
+        // Criação: unidade + proprietário
+        const res = await fetch('/api/unidades', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formUnidade),
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          setErroUnidade(data.erro ?? 'Erro ao criar unidade')
+          return
+        }
+      }
+      setShowModalUnidade(false)
+      setEditandoUnidade(null)
+      resetFormUnidade()
+      carregarUnidades()
+      carregarUnidadesSelect()
+    } catch {
+      setErroUnidade('Erro de conexão')
+    }
+  }
+
+  async function toggleUnidade(u: Unidade) {
+    const acao = u.ativo ? 'desativar' : 'reativar'
+    if (!confirm(`Deseja ${acao} a unidade "${u.nome}"?`)) return
+    await fetch(`/api/unidades/${u.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ativo: !u.ativo }),
     })
-    setShowModal(true)
+    carregarUnidades()
   }
 
-  function resetForm() {
-    setForm({
-      nome: '', email: '', senha: '',
-      perfil: perfil === 'PROPRIETARIO' ? 'ESPECIALISTA' : 'ESPECIALISTA',
-      unidadeId: operador.unidadeId ?? '',
-      limiteAnalises: 50,
-    })
-    setErro('')
+  function abrirEdicaoUnidade(u: Unidade) {
+    setEditandoUnidade(u)
+    setFormUnidade({ nome: u.nome, limiteAnalises: u.limiteAnalises, nomeProprietario: '', emailProprietario: '', senhaProprietario: '' })
+    setShowModalUnidade(true)
   }
 
-  const corPerfil: Record<string, string> = {
-    MASTER: 'text-red-300 bg-red-900/30 border border-red-800',
-    PROPRIETARIO: 'text-dourado-300 bg-dourado-400/10 border border-dourado-400/30',
-    ESPECIALISTA: 'text-blue-300 bg-blue-900/30 border border-blue-800',
+  function resetFormUnidade() {
+    setFormUnidade({ nome: '', limiteAnalises: 50, nomeProprietario: '', emailProprietario: '', senhaProprietario: '' })
+    setErroUnidade('')
   }
 
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -162,26 +263,46 @@ export default function UserManagement({ session }: Props) {
         <div>
           <h1 className="text-2xl font-bold text-white">Gerenciar Usuários</h1>
           <p className="text-escuro-200 text-sm mt-1">
-            {perfil === 'MASTER' ? 'Todos os usuários do sistema' : 'Usuários da sua unidade'}
+            {isMaster ? 'Todos os usuários do sistema' : 'Usuários da sua unidade'}
           </p>
         </div>
         <button
-          onClick={() => { resetForm(); setEditando(null); setShowModal(true) }}
+          onClick={() => {
+            if (aba === 'usuarios') { resetFormUsuario(); setEditandoUsuario(null); setShowModalUsuario(true) }
+            else { resetFormUnidade(); setEditandoUnidade(null); setShowModalUnidade(true) }
+          }}
           className="btn-primary flex items-center gap-2"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Novo Usuário
+          {aba === 'usuarios' ? 'Novo Usuário' : 'Nova Unidade'}
         </button>
       </div>
 
-      {/* Configurações MASTER */}
-      {perfil === 'MASTER' && (
+      {/* Abas (MASTER) */}
+      {isMaster && (
+        <div className="flex gap-1 mb-6 bg-escuro-700 p-1 rounded-xl w-fit">
+          {(['usuarios', 'unidades'] as const).map(a => (
+            <button
+              key={a}
+              onClick={() => setAba(a)}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                aba === a
+                  ? 'bg-dourado-400 text-escuro-700'
+                  : 'text-escuro-200 hover:text-white'
+              }`}
+            >
+              {a === 'usuarios' ? 'Usuários' : 'Unidades'}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Câmbio (MASTER, aba usuários) */}
+      {isMaster && aba === 'usuarios' && (
         <div className="card mb-6">
-          <h2 className="text-sm font-semibold text-dourado-300 uppercase tracking-wider mb-4">
-            Configurações do Sistema
-          </h2>
+          <h2 className="text-sm font-semibold text-dourado-300 uppercase tracking-wider mb-4">Configurações do Sistema</h2>
           <div className="flex items-end gap-4">
             <div>
               <label className="label">Câmbio Dólar / Real (R$)</label>
@@ -190,189 +311,255 @@ export default function UserManagement({ session }: Props) {
                 value={cambioDolar}
                 onChange={e => setCambioDolar(e.target.value)}
                 className="input-field w-40"
-                step="0.01"
-                min="1"
-                placeholder="5.50"
+                step="0.01" min="1"
               />
             </div>
-            <button onClick={salvarCambio} className="btn-primary px-5 py-2.5">
-              Salvar Câmbio
-            </button>
+            <button onClick={salvarCambio} className="btn-primary px-5 py-2.5">Salvar Câmbio</button>
           </div>
         </div>
       )}
 
-      {/* Tabela de usuários */}
-      <div className="card overflow-hidden p-0">
-        {carregando ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-dourado-400 mx-auto" />
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-escuro-500 bg-escuro-700">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-escuro-200 uppercase tracking-wider">Nome</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-escuro-200 uppercase tracking-wider">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-escuro-200 uppercase tracking-wider">Perfil</th>
-                  {perfil === 'MASTER' && (
+      {/* ── Aba Usuários ── */}
+      {aba === 'usuarios' && (
+        <div className="card overflow-hidden p-0">
+          {carregandoUsuarios ? (
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-dourado-400 mx-auto" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-escuro-500 bg-escuro-700">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-escuro-200 uppercase tracking-wider">Nome</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-escuro-200 uppercase tracking-wider">Email</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-escuro-200 uppercase tracking-wider">Perfil</th>
+                    {isMaster && <th className="px-4 py-3 text-left text-xs font-semibold text-escuro-200 uppercase tracking-wider">Unidade</th>}
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-escuro-200 uppercase tracking-wider">Análises/mês</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-escuro-200 uppercase tracking-wider">Custo/mês</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-escuro-200 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-escuro-200 uppercase tracking-wider">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-escuro-500">
+                  {usuarios.map(u => (
+                    <tr key={u.id} className="hover:bg-escuro-500/30 transition-colors">
+                      <td className="px-4 py-3 text-sm text-white font-medium">{u.nome}</td>
+                      <td className="px-4 py-3 text-sm text-escuro-200">{u.email}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${corPerfil[u.perfil] ?? ''}`}>{u.perfil}</span>
+                      </td>
+                      {isMaster && (
+                        <td className="px-4 py-3 text-sm text-escuro-200">
+                          {u.unidade?.nome ?? '—'}
+                          {u.unidade && <span className="text-xs text-escuro-300 ml-1">(lim: {u.unidade.limiteAnalises})</span>}
+                        </td>
+                      )}
+                      <td className="px-4 py-3 text-sm text-right text-white">{u.analisesMes}</td>
+                      <td className="px-4 py-3 text-sm text-right text-dourado-400 font-semibold">{formatarMoeda(u.custoMes)}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`text-xs px-2 py-1 rounded-full ${u.ativo ? 'bg-green-900/40 text-green-300' : 'bg-escuro-400 text-escuro-200'}`}>
+                          {u.ativo ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => abrirEdicaoUsuario(u)} className="p-1.5 rounded hover:bg-escuro-400 text-escuro-200 hover:text-white transition-colors" title="Editar">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => toggleUsuario(u)}
+                            className={`p-1.5 rounded transition-colors ${u.ativo ? 'hover:bg-red-900/30 text-escuro-200 hover:text-red-400' : 'hover:bg-green-900/30 text-escuro-200 hover:text-green-400'}`}
+                            title={u.ativo ? 'Desativar' : 'Reativar'}
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              {u.ativo
+                                ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              }
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {usuarios.length === 0 && <div className="p-8 text-center text-escuro-300 text-sm">Nenhum usuário encontrado</div>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Aba Unidades ── */}
+      {aba === 'unidades' && isMaster && (
+        <div className="card overflow-hidden p-0">
+          {carregandoUnidades ? (
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-dourado-400 mx-auto" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-escuro-500 bg-escuro-700">
                     <th className="px-4 py-3 text-left text-xs font-semibold text-escuro-200 uppercase tracking-wider">Unidade</th>
-                  )}
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-escuro-200 uppercase tracking-wider">Análises/mês</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-escuro-200 uppercase tracking-wider">Custo/mês</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-escuro-200 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-escuro-200 uppercase tracking-wider">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-escuro-500">
-                {usuarios.map(u => (
-                  <tr key={u.id} className="hover:bg-escuro-500/30 transition-colors">
-                    <td className="px-4 py-3 text-sm text-white font-medium">{u.nome}</td>
-                    <td className="px-4 py-3 text-sm text-escuro-200">{u.email}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${corPerfil[u.perfil] ?? ''}`}>
-                        {u.perfil}
-                      </span>
-                    </td>
-                    {perfil === 'MASTER' && (
-                      <td className="px-4 py-3 text-sm text-escuro-200">
-                        {u.unidade?.nome ?? '—'}
-                        {u.unidade && (
-                          <span className="text-xs text-escuro-300 ml-1">(lim: {u.unidade.limiteAnalises})</span>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-escuro-200 uppercase tracking-wider">Proprietário</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-escuro-200 uppercase tracking-wider">Limite/mês</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-escuro-200 uppercase tracking-wider">Uso este mês</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-escuro-200 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-escuro-200 uppercase tracking-wider">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-escuro-500">
+                  {unidades.map(u => (
+                    <tr key={u.id} className={`hover:bg-escuro-500/30 transition-colors ${!u.ativo ? 'opacity-50' : ''}`}>
+                      <td className="px-4 py-3">
+                        <p className="text-sm text-white font-medium">{u.nome}</p>
+                        <p className="text-xs text-escuro-300">{formatarData(u.criadoEm)}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        {u.proprietario ? (
+                          <>
+                            <p className="text-sm text-white">{u.proprietario.nome}</p>
+                            <p className="text-xs text-escuro-300">{u.proprietario.email}</p>
+                          </>
+                        ) : (
+                          <span className="text-xs text-escuro-300 italic">Sem proprietário</span>
                         )}
                       </td>
-                    )}
-                    <td className="px-4 py-3 text-sm text-right text-white">{u.analisesMes}</td>
-                    <td className="px-4 py-3 text-sm text-right text-dourado-400 font-semibold">
-                      {formatarMoeda(u.custoMes)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`text-xs px-2 py-1 rounded-full ${u.ativo ? 'bg-green-900/40 text-green-300' : 'bg-escuro-400 text-escuro-200'}`}>
-                        {u.ativo ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => abrirEdicao(u)}
-                          className="p-1.5 rounded hover:bg-escuro-400 text-escuro-200 hover:text-white transition-colors"
-                          title="Editar"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => excluirUsuario(u.id)}
-                          className="p-1.5 rounded hover:bg-red-900/30 text-escuro-200 hover:text-red-400 transition-colors"
-                          title="Desativar"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {usuarios.length === 0 && (
-              <div className="p-8 text-center text-escuro-300 text-sm">Nenhum usuário encontrado</div>
-            )}
-          </div>
-        )}
-      </div>
+                      <td className="px-4 py-3 text-sm text-right text-white">{u.limiteAnalises}</td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={`text-sm font-semibold ${u.analisesMes >= u.limiteAnalises ? 'text-red-400' : 'text-white'}`}>
+                          {u.analisesMes}
+                        </span>
+                        <span className="text-xs text-escuro-300 ml-1">/ {u.limiteAnalises}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`text-xs px-2 py-1 rounded-full ${u.ativo ? 'bg-green-900/40 text-green-300' : 'bg-escuro-400 text-escuro-200'}`}>
+                          {u.ativo ? 'Ativa' : 'Inativa'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => abrirEdicaoUnidade(u)} className="p-1.5 rounded hover:bg-escuro-400 text-escuro-200 hover:text-white transition-colors" title="Editar">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => toggleUnidade(u)}
+                            className={`p-1.5 rounded transition-colors ${u.ativo ? 'hover:bg-red-900/30 text-escuro-200 hover:text-red-400' : 'hover:bg-green-900/30 text-escuro-200 hover:text-green-400'}`}
+                            title={u.ativo ? 'Desativar' : 'Reativar'}
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              {u.ativo
+                                ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 115.636 5.636m12.728 12.728L5.636 5.636" />
+                                : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              }
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {unidades.length === 0 && <div className="p-8 text-center text-escuro-300 text-sm">Nenhuma unidade cadastrada</div>}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Modal Novo/Editar Usuário */}
-      {showModal && (
+      {/* ── Modal Usuário ── */}
+      {showModalUsuario && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="card w-full max-w-lg">
             <h2 className="text-lg font-semibold text-white mb-5">
-              {editando ? 'Editar Usuário' : 'Novo Usuário'}
+              {editandoUsuario ? 'Editar Usuário' : 'Novo Usuário'}
             </h2>
-
             <div className="space-y-4">
               <div>
                 <label className="label">Nome completo</label>
-                <input
-                  type="text"
-                  value={form.nome}
-                  onChange={e => setForm(f => ({ ...f, nome: e.target.value }))}
-                  className="input-field"
-                  placeholder="Nome do usuário"
-                />
+                <input type="text" value={formUsuario.nome} onChange={e => setFormUsuario(f => ({ ...f, nome: e.target.value }))} className="input-field" placeholder="Nome do usuário" />
               </div>
-
               <div>
                 <label className="label">Email</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                  className="input-field"
-                  placeholder="email@exemplo.com"
-                />
+                <input type="email" value={formUsuario.email} onChange={e => setFormUsuario(f => ({ ...f, email: e.target.value }))} className="input-field" placeholder="email@exemplo.com" />
               </div>
-
               <div>
-                <label className="label">{editando ? 'Nova Senha (deixe em branco para manter)' : 'Senha'}</label>
-                <input
-                  type="password"
-                  value={form.senha}
-                  onChange={e => setForm(f => ({ ...f, senha: e.target.value }))}
-                  className="input-field"
-                  placeholder={editando ? '••••••••' : 'Mínimo 8 caracteres'}
-                />
+                <label className="label">{editandoUsuario ? 'Nova Senha (deixe em branco para manter)' : 'Senha'}</label>
+                <input type="password" value={formUsuario.senha} onChange={e => setFormUsuario(f => ({ ...f, senha: e.target.value }))} className="input-field" placeholder={editandoUsuario ? '••••••••' : 'Mínimo 8 caracteres'} />
               </div>
-
-              {perfil === 'MASTER' && (
+              {isMaster && (
                 <>
                   <div>
                     <label className="label">Perfil</label>
-                    <select
-                      value={form.perfil}
-                      onChange={e => setForm(f => ({ ...f, perfil: e.target.value }))}
-                      className="input-field"
-                    >
+                    <select value={formUsuario.perfil} onChange={e => setFormUsuario(f => ({ ...f, perfil: e.target.value }))} className="input-field">
                       {PERFIS.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
-
                   <div>
                     <label className="label">Unidade</label>
-                    <select
-                      value={form.unidadeId}
-                      onChange={e => setForm(f => ({ ...f, unidadeId: e.target.value }))}
-                      className="input-field"
-                    >
+                    <select value={formUsuario.unidadeId} onChange={e => setFormUsuario(f => ({ ...f, unidadeId: e.target.value }))} className="input-field">
                       <option value="">Selecione...</option>
-                      {unidades.map(u => (
-                        <option key={u.id} value={u.id}>{u.nome} - {u.estado}</option>
-                      ))}
+                      {unidadesSelect.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
                     </select>
                   </div>
                 </>
               )}
             </div>
-
-            {erro && (
-              <div className="mt-4 bg-red-900/30 border border-red-700 text-red-300 rounded-lg px-4 py-2.5 text-sm">
-                {erro}
-              </div>
-            )}
-
+            {erroUsuario && <div className="mt-4 bg-red-900/30 border border-red-700 text-red-300 rounded-lg px-4 py-2.5 text-sm">{erroUsuario}</div>}
             <div className="flex gap-3 mt-6">
-              <button onClick={salvarUsuario} className="btn-primary flex-1 py-2.5">
-                {editando ? 'Salvar Alterações' : 'Criar Usuário'}
-              </button>
-              <button
-                onClick={() => { setShowModal(false); setEditando(null); resetForm() }}
-                className="btn-secondary flex-1 py-2.5"
-              >
-                Cancelar
-              </button>
+              <button onClick={salvarUsuario} className="btn-primary flex-1 py-2.5">{editandoUsuario ? 'Salvar Alterações' : 'Criar Usuário'}</button>
+              <button onClick={() => { setShowModalUsuario(false); setEditandoUsuario(null); resetFormUsuario() }} className="btn-secondary flex-1 py-2.5">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Unidade ── */}
+      {showModalUnidade && isMaster && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="card w-full max-w-lg">
+            <h2 className="text-lg font-semibold text-white mb-5">
+              {editandoUnidade ? 'Editar Unidade' : 'Nova Unidade'}
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="label">Nome da unidade</label>
+                <input type="text" value={formUnidade.nome} onChange={e => setFormUnidade(f => ({ ...f, nome: e.target.value }))} className="input-field" placeholder="Ex: Biocasa Santos" />
+              </div>
+              <div>
+                <label className="label">Limite de análises por mês</label>
+                <input type="number" value={formUnidade.limiteAnalises} onChange={e => setFormUnidade(f => ({ ...f, limiteAnalises: Number(e.target.value) }))} className="input-field" min={1} />
+              </div>
+              {!editandoUnidade && (
+                <>
+                  <div className="border-t border-escuro-500 pt-4">
+                    <p className="text-xs font-semibold text-dourado-300 uppercase tracking-wider mb-3">Dados do Proprietário</p>
+                  </div>
+                  <div>
+                    <label className="label">Nome do proprietário</label>
+                    <input type="text" value={formUnidade.nomeProprietario} onChange={e => setFormUnidade(f => ({ ...f, nomeProprietario: e.target.value }))} className="input-field" placeholder="Nome completo" />
+                  </div>
+                  <div>
+                    <label className="label">Email do proprietário</label>
+                    <input type="email" value={formUnidade.emailProprietario} onChange={e => setFormUnidade(f => ({ ...f, emailProprietario: e.target.value }))} className="input-field" placeholder="proprietario@biocasa.com.br" />
+                  </div>
+                  <div>
+                    <label className="label">Senha do proprietário</label>
+                    <input type="password" value={formUnidade.senhaProprietario} onChange={e => setFormUnidade(f => ({ ...f, senhaProprietario: e.target.value }))} className="input-field" placeholder="Mínimo 8 caracteres" />
+                  </div>
+                </>
+              )}
+            </div>
+            {erroUnidade && <div className="mt-4 bg-red-900/30 border border-red-700 text-red-300 rounded-lg px-4 py-2.5 text-sm">{erroUnidade}</div>}
+            <div className="flex gap-3 mt-6">
+              <button onClick={salvarUnidade} className="btn-primary flex-1 py-2.5">{editandoUnidade ? 'Salvar Alterações' : 'Criar Unidade'}</button>
+              <button onClick={() => { setShowModalUnidade(false); setEditandoUnidade(null); resetFormUnidade() }} className="btn-secondary flex-1 py-2.5">Cancelar</button>
             </div>
           </div>
         </div>

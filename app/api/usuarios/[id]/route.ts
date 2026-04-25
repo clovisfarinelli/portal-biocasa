@@ -23,6 +23,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 })
   }
 
+  // PROPRIETARIO só pode editar usuários da sua unidade
+  if (operador.perfil === 'PROPRIETARIO') {
+    const alvo = await prisma.usuario.findUnique({ where: { id: params.id }, select: { unidadeId: true } })
+    if (!alvo || alvo.unidadeId !== operador.unidadeId) {
+      return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 })
+    }
+  }
+
   const body = await req.json()
   const dados = schemaAtualizar.parse(body)
 
@@ -48,6 +56,14 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const operador = session.user as any
   if (operador.perfil === 'ESPECIALISTA') {
     return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 })
+  }
+
+  // PROPRIETARIO só pode desativar usuários da sua unidade
+  if (operador.perfil === 'PROPRIETARIO') {
+    const alvo = await prisma.usuario.findUnique({ where: { id: params.id }, select: { unidadeId: true } })
+    if (!alvo || alvo.unidadeId !== operador.unidadeId) {
+      return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 })
+    }
   }
 
   // Não pode deletar a si mesmo
