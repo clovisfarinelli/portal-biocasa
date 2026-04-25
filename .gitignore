@@ -39,3 +39,6 @@ next-env.d.ts
 
 # prisma
 prisma/migrations/
+
+# claude code settings (pode conter tokens)
+.claude/
