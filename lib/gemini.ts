@@ -22,6 +22,11 @@ FLUXO OBRIGATÓRIO:
 4. Faça os cálculos com os dados REAIS
 5. Apresente a DRE com base nos dados reais
 
+QUANDO ANÁLISE PROFUNDA ESTIVER ATIVA (indicada no contexto da mensagem):
+- Use o Google Search para buscar dados atualizados: preço do m² na cidade/bairro, CUB regional atualizado, legislação urbanística vigente, dados de mercado recentes
+- Cite as fontes encontradas na resposta
+- Se encontrar dados conflitantes, prefira os mais recentes e explique a discrepância
+
 PROTOCOLO PARA DADOS INSUFICIENTES:
 Quando não houver documentos suficientes no banco de dados E nenhum arquivo relevante foi enviado para realizar a análise, siga EXATAMENTE este protocolo:
 1. Liste claramente o que está faltando: "Preciso de: [documento X], [dado Y]"
@@ -59,7 +64,6 @@ async function buscarConteudoArquivos(arquivos: ArquivoParaGemini[]): Promise<Pa
 
   for (const arq of arquivos) {
     if (!TIPOS_INLINE.has(arq.tipo)) {
-      // Tipo não suportado como inline — inclui apenas o nome como referência textual
       partes.push({ text: `[Arquivo não lido diretamente: ${arq.nome} (${arq.tipo})]` })
       continue
     }
@@ -139,15 +143,8 @@ async function obterCambio(): Promise<number> {
   return parseFloat(config?.valor ?? process.env.DOLAR_REAL_PADRAO ?? '5.50')
 }
 
-export async function enviarMensagemGemini(
-  mensagens: MensagemChat[],
-  contexto: ContextoAnalise,
-  cidadeId?: string,
-  arquivos: ArquivoParaGemini[] = [],
-  analiseProfunda = false
-) {
-  const genAI = getGenAI()
-  const model = genAI.getGenerativeModel({
+function criarModel(genAI: GoogleGenerativeAI, comGrounding: boolean) {
+  return genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     systemInstruction: SYSTEM_PROMPT,
     generationConfig: {
@@ -158,8 +155,19 @@ export async function enviarMensagemGemini(
       { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
       { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
     ],
-    tools: analiseProfunda ? [{ googleSearchRetrieval: {} }] : undefined,
+    // googleSearch é o tool correto para Gemini 2.x (googleSearchRetrieval é Gemini 1.5)
+    tools: comGrounding ? [{ googleSearch: {} } as any] : undefined,
   })
+}
+
+export async function enviarMensagemGemini(
+  mensagens: MensagemChat[],
+  contexto: ContextoAnalise,
+  cidadeId?: string,
+  arquivos: ArquivoParaGemini[] = [],
+  analiseProfunda = false
+) {
+  const genAI = getGenAI()
 
   const [documentosCtx, aprendizadosCtx, partesArquivos] = await Promise.all([
     buscarDocumentosRelevantes(cidadeId),
@@ -175,6 +183,9 @@ export async function enviarMensagemGemini(
   if (arquivos.length > 0) {
     linhasContexto.push(`Arquivos enviados: ${arquivos.map(a => a.nome).join(', ')}`)
   }
+  if (analiseProfunda) {
+    linhasContexto.push('[ANÁLISE PROFUNDA ATIVA — busque dados atualizados na internet via Google Search]')
+  }
 
   const prefixoContexto = linhasContexto.length > 0
     ? linhasContexto.join('\n') + documentosCtx + aprendizadosCtx + '\n\n---\n\n'
@@ -185,15 +196,33 @@ export async function enviarMensagemGemini(
     parts: [{ text: m.content }],
   }))
 
-  const chat = model.startChat({ history: historico })
-
   const ultimaMensagem = mensagens[mensagens.length - 1].content
-  const textoPrincipal = prefixoContexto + ultimaMensagem
+  const partesMensagem: Part[] = [{ text: prefixoContexto + ultimaMensagem }, ...partesArquivos]
 
-  // Monta partes da mensagem: texto + arquivos inline
-  const partesMensagem: Part[] = [{ text: textoPrincipal }, ...partesArquivos]
+  async function chamar(comGrounding: boolean) {
+    const model = criarModel(genAI, comGrounding)
+    const chat = model.startChat({ history: historico })
+    return await chat.sendMessage(partesMensagem)
+  }
 
-  const result = await chat.sendMessage(partesMensagem)
+  let result
+  if (analiseProfunda) {
+    try {
+      result = await chamar(true)
+    } catch (err: any) {
+      const msg: string = err?.message ?? ''
+      // Se o endpoint rejeitar o tool googleSearch, tenta sem grounding
+      if (msg.includes('not supported') || msg.includes('400') || msg.includes('grounding') || msg.includes('google_search')) {
+        console.warn('[gemini] googleSearch grounding não disponível nesta conta/região — tentando sem grounding')
+        result = await chamar(false)
+      } else {
+        throw err
+      }
+    }
+  } else {
+    result = await chamar(false)
+  }
+
   const response = result.response
 
   const tokensInput = response.usageMetadata?.promptTokenCount ?? 0
