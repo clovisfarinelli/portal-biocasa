@@ -168,7 +168,7 @@ logs_erro       → erros de API capturados
 
 ### Modelo
 ```
-gemini-1.5-pro
+gemini-2.0-flash
 maxOutputTokens: 8192
 temperature: 0.7
 ```
@@ -182,8 +182,8 @@ temperature: 0.7
 
 ### Cálculo de custo
 ```typescript
-// Preços Gemini 1.5 Pro (conforme documentação Google em 04/2026)
-custo_usd = (tokens_input * 3.50 + tokens_output * 10.50) / 1_000_000
+// Preços Gemini 2.0 Flash (conforme documentação Google em 04/2026)
+custo_usd = (tokens_input * 0.10 + tokens_output * 0.40) / 1_000_000
 custo_brl = custo_usd * cambio  // cambio lido da tabela configuracoes
 ```
 

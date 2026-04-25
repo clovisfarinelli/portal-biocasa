@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     const { GoogleGenerativeAI } = await import('@google/generative-ai')
     if (!chave) throw new Error('GEMINI_API_KEY ausente')
     const genAI = new GoogleGenerativeAI(chave)
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
     const res = await model.generateContent('Responda apenas: OK')
     resultado.gemini_flash_teste = 'sucesso'
     resultado.gemini_flash_resposta = res.response.text().slice(0, 80)
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
   try {
     const { GoogleGenerativeAI } = await import('@google/generative-ai')
     const genAI = new GoogleGenerativeAI(chave)
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
     const res = await model.generateContent('Responda apenas: OK')
     resultado.gemini_pro_teste = 'sucesso'
     resultado.gemini_pro_resposta = res.response.text().slice(0, 80)
