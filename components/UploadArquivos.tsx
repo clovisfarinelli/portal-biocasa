@@ -230,9 +230,9 @@ export default function UploadArquivos({
                   <p className="text-[11px] text-green-400">Enviado</p>
                 )}
               </div>
-              {arq.file.type.startsWith('image/') && arq.url && (
+              {arq.file.type.startsWith('image/') && arq.progresso === 100 && (
                 <img
-                  src={arq.url}
+                  src={URL.createObjectURL(arq.file)}
                   alt={arq.file.name}
                   className="w-8 h-8 rounded object-cover flex-shrink-0"
                 />
