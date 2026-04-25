@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --dourado: #C9A84C;
+    --escuro: #1A1A2E;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  body {
+    @apply bg-escuro-600 text-white;
+  }
+
+  * {
+    @apply border-escuro-500;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-dourado-400 hover:bg-dourado-500 text-escuro-600 font-semibold px-4 py-2 rounded-lg transition-colors duration-200;
+  }
+
+  .btn-secondary {
+    @apply bg-escuro-500 hover:bg-escuro-400 text-white font-semibold px-4 py-2 rounded-lg transition-colors duration-200 border border-escuro-400;
+  }
+
+  .btn-danger {
+    @apply bg-red-700 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors duration-200;
+  }
+
+  .card {
+    @apply bg-escuro-500 rounded-xl border border-escuro-400 p-6;
+  }
+
+  .input-field {
+    @apply w-full bg-escuro-700 border border-escuro-400 rounded-lg px-4 py-2.5 text-white placeholder-escuro-300 focus:outline-none focus:border-dourado-400 transition-colors;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-escuro-100 mb-1.5;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-escuro-100 hover:bg-escuro-500 hover:text-white transition-all cursor-pointer;
+  }
+
+  .sidebar-item-active {
+    @apply sidebar-item bg-dourado-400/10 text-dourado-400 border-l-2 border-dourado-400;
+  }
+}
+
+/* Markdown styling */
+.markdown-content h1 { @apply text-2xl font-bold text-dourado-400 mb-4 mt-6; }
+.markdown-content h2 { @apply text-xl font-semibold text-dourado-300 mb-3 mt-5; }
+.markdown-content h3 { @apply text-lg font-semibold text-white mb-2 mt-4; }
+.markdown-content p  { @apply text-escuro-100 leading-relaxed mb-3; }
+.markdown-content ul { @apply list-disc list-inside text-escuro-100 mb-3 space-y-1; }
+.markdown-content ol { @apply list-decimal list-inside text-escuro-100 mb-3 space-y-1; }
+.markdown-content li { @apply text-escuro-100; }
+.markdown-content strong { @apply text-white font-semibold; }
+.markdown-content em { @apply italic text-escuro-200; }
+.markdown-content code { @apply bg-escuro-700 text-dourado-300 px-1.5 py-0.5 rounded text-sm font-mono; }
+.markdown-content pre  { @apply bg-escuro-700 rounded-lg p-4 mb-3 overflow-x-auto; }
+.markdown-content pre code { @apply bg-transparent p-0; }
+.markdown-content hr   { @apply border-escuro-400 my-4; }
+.markdown-content blockquote { @apply border-l-4 border-dourado-400 pl-4 text-escuro-200 italic my-3; }
+.markdown-content table { @apply w-full border-collapse mb-3; }
+.markdown-content th  { @apply bg-escuro-700 text-dourado-300 font-semibold px-4 py-2 text-left border border-escuro-400; }
+.markdown-content td  { @apply px-4 py-2 border border-escuro-400 text-escuro-100; }
+.markdown-content tr:nth-child(even) td { @apply bg-escuro-700/50; }
+
+/* Scrollbar customizada */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { @apply bg-escuro-700; }
+::-webkit-scrollbar-thumb { @apply bg-escuro-400 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-dourado-400; }
+
+/* Upload progress animation */
+@keyframes progress-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.progress-pulse { animation: progress-pulse 1.5s ease-in-out infinite; }

@@ -1,0 +1,224 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react'
+import { Session } from 'next-auth'
+import LogoBiocasa from './LogoBiocasa'
+import { formatarMoeda, formatarNumero } from '@/lib/utils'
+
+interface Analise {
+  id: string
+  criadoEm: string
+  inscricaoImobiliaria?: string
+  cidade?: { nome: string }
+  custoBrl: number
+  tokensInput: number
+  tokensOutput: number
+}
+
+interface ConsumoMes {
+  totalAnalises: number
+  totalTokens: number
+  totalCusto: number
+}
+
+interface SidebarProps {
+  session: Session
+}
+
+export default function Sidebar({ session }: SidebarProps) {
+  const pathname = usePathname()
+  const router = useRouter()
+  const usuario = session.user as any
+  const [historico, setHistorico] = useState<Analise[]>([])
+  const [consumo, setConsumo] = useState<ConsumoMes>({ totalAnalises: 0, totalTokens: 0, totalCusto: 0 })
+  const [recolhido, setRecolhido] = useState(false)
+
+  useEffect(() => {
+    carregarHistorico()
+    carregarConsumo()
+  }, [pathname])
+
+  async function carregarHistorico() {
+    const res = await fetch('/api/analises?pagina=1')
+    if (res.ok) {
+      const data = await res.json()
+      setHistorico(data.analises?.slice(0, 10) ?? [])
+    }
+  }
+
+  async function carregarConsumo() {
+    const res = await fetch('/api/analises?pagina=1')
+    if (res.ok) {
+      const data = await res.json()
+      const analises: Analise[] = data.analises ?? []
+      const inicio = new Date()
+      inicio.setDate(1)
+      const analisesMes = analises.filter(a => new Date(a.criadoEm) >= inicio)
+      setConsumo({
+        totalAnalises: analisesMes.length,
+        totalTokens: analisesMes.reduce((s, a) => s + a.tokensInput + a.tokensOutput, 0),
+        totalCusto: analisesMes.reduce((s, a) => s + a.custoBrl, 0),
+      })
+    }
+  }
+
+  function novaAnalise() {
+    router.push('/chat')
+    router.refresh()
+  }
+
+  const perfil = usuario.perfil as string
+
+  return (
+    <aside
+      className={`
+        flex flex-col bg-escuro-700 border-r border-escuro-500 transition-all duration-300
+        ${recolhido ? 'w-16' : 'w-72'}
+      `}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-4 border-b border-escuro-500">
+        {!recolhido && <LogoBiocasa />}
+        <button
+          onClick={() => setRecolhido(!recolhido)}
+          className="p-2 rounded-lg hover:bg-escuro-500 text-escuro-200 hover:text-white transition-colors ml-auto"
+          title={recolhido ? 'Expandir menu' : 'Recolher menu'}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {recolhido
+              ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            }
+          </svg>
+        </button>
+      </div>
+
+      {/* Nova Análise */}
+      <div className="px-3 py-3">
+        <button
+          onClick={novaAnalise}
+          className="btn-primary w-full flex items-center justify-center gap-2 py-2.5"
+          title="Nova Análise"
+        >
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          {!recolhido && <span>Nova Análise</span>}
+        </button>
+      </div>
+
+      {/* Nav items */}
+      <nav className="px-3 space-y-1">
+        {perfil !== 'ESPECIALISTA' && (
+          <Link
+            href="/usuarios"
+            className={pathname === '/usuarios' ? 'sidebar-item-active' : 'sidebar-item'}
+            title="Usuários"
+          >
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {!recolhido && <span>Usuários</span>}
+          </Link>
+        )}
+
+        {perfil === 'MASTER' && (
+          <Link
+            href="/treinar-ia"
+            className={pathname === '/treinar-ia' ? 'sidebar-item-active' : 'sidebar-item'}
+            title="Treinar IA"
+          >
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            {!recolhido && <span>Treinar IA</span>}
+          </Link>
+        )}
+      </nav>
+
+      {/* Histórico */}
+      {!recolhido && (
+        <div className="flex-1 overflow-y-auto px-3 py-4">
+          <p className="text-xs font-semibold text-escuro-300 uppercase tracking-wider mb-2 px-1">
+            Histórico
+          </p>
+          {historico.length === 0 ? (
+            <p className="text-xs text-escuro-300 px-1 italic">Nenhuma análise ainda</p>
+          ) : (
+            <div className="space-y-1">
+              {historico.map(analise => (
+                <Link
+                  key={analise.id}
+                  href={`/chat?analise=${analise.id}`}
+                  className="block px-3 py-2 rounded-lg hover:bg-escuro-500 transition-colors group"
+                >
+                  <p className="text-xs text-white truncate group-hover:text-dourado-300 transition-colors">
+                    {analise.inscricaoImobiliaria ?? 'Análise sem inscrição'}
+                  </p>
+                  <p className="text-[11px] text-escuro-300 truncate">
+                    {analise.cidade?.nome ?? 'Sem cidade'} •{' '}
+                    {new Date(analise.criadoEm).toLocaleDateString('pt-BR')}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Consumo do mês */}
+      {!recolhido && (
+        <div className="border-t border-escuro-500 px-4 py-3">
+          <p className="text-xs font-semibold text-escuro-300 uppercase tracking-wider mb-2">
+            Consumo do mês
+          </p>
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-escuro-200">Análises</span>
+              <span className="text-white font-medium">{consumo.totalAnalises}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-escuro-200">Tokens</span>
+              <span className="text-white font-medium">{formatarNumero(consumo.totalTokens)}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-escuro-200">Custo est.</span>
+              <span className="text-dourado-400 font-semibold">{formatarMoeda(consumo.totalCusto)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Usuário logado */}
+      <div className="border-t border-escuro-500 px-3 py-3">
+        <div className={`flex items-center gap-3 ${recolhido ? 'justify-center' : ''}`}>
+          <div className="w-8 h-8 rounded-full bg-dourado-400/20 border border-dourado-400/40 flex items-center justify-center flex-shrink-0">
+            <span className="text-dourado-400 text-xs font-bold">
+              {session.user?.name?.charAt(0).toUpperCase() ?? 'U'}
+            </span>
+          </div>
+          {!recolhido && (
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-white truncate">{session.user?.name}</p>
+              <p className="text-[10px] text-escuro-300 truncate">{perfil}</p>
+            </div>
+          )}
+          {!recolhido && (
+            <button
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              className="p-1.5 rounded-lg hover:bg-escuro-500 text-escuro-300 hover:text-red-400 transition-colors"
+              title="Sair"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+    </aside>
+  )
+}

@@ -1,0 +1,180 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+enum Perfil {
+  MASTER
+  PROPRIETARIO
+  ESPECIALISTA
+}
+
+enum StatusValidacao {
+  PENDENTE
+  VALIDA
+  INVALIDA
+}
+
+enum TipoDocumento {
+  PLANO_DIRETOR
+  ZONEAMENTO
+  CUSTOS
+  MERCADO
+  DIRETRIZES_BIOCASA
+  OUTRO
+}
+
+enum CategoriaDocumento {
+  GLOBAL
+  CIDADE
+}
+
+model Unidade {
+  id              String    @id @default(cuid())
+  nome            String
+  estado          String
+  limiteAnalises  Int       @default(50)
+  analisesMes     Int       @default(0)
+  ativo           Boolean   @default(true)
+  criadoEm        DateTime  @default(now())
+  atualizadoEm    DateTime  @updatedAt
+
+  usuarios        Usuario[]
+  analises        Analise[]
+
+  @@map("unidades")
+}
+
+model Usuario {
+  id           String   @id @default(cuid())
+  nome         String
+  email        String   @unique
+  senhaHash    String
+  perfil       Perfil
+  unidadeId    String?
+  ativo        Boolean  @default(true)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  unidade      Unidade?   @relation(fields: [unidadeId], references: [id])
+  analises     Analise[]
+  logsErro     LogErro[]
+
+  @@map("usuarios")
+}
+
+model Cidade {
+  id           String   @id @default(cuid())
+  nome         String
+  estado       String
+  ativo        Boolean  @default(true)
+  criadoEm    DateTime @default(now())
+
+  documentosIa  DocumentoIa[]
+  analises      Analise[]
+  aprendizados  Aprendizado[]
+
+  @@unique([nome, estado])
+  @@map("cidades")
+}
+
+model DocumentoIa {
+  id            String             @id @default(cuid())
+  titulo        String
+  tipo          TipoDocumento
+  categoria     CategoriaDocumento
+  cidadeId      String?
+  arquivoUrl    String?
+  conteudoTexto String?            @db.Text
+  embedding     Unsupported("vector(768)")?
+  ativo         Boolean            @default(true)
+  criadoEm     DateTime           @default(now())
+
+  cidade        Cidade?  @relation(fields: [cidadeId], references: [id])
+
+  @@map("documentos_ia")
+}
+
+model Analise {
+  id                   String          @id @default(cuid())
+  usuarioId            String
+  unidadeId            String?
+  cidadeId             String?
+  inscricaoImobiliaria String?
+  margemAlvo           Float?          @default(20)
+  tokensInput          Int             @default(0)
+  tokensOutput         Int             @default(0)
+  custoUsd             Float           @default(0)
+  custoBrl             Float           @default(0)
+  conteudoConversa     Json
+  statusValidacao      StatusValidacao @default(PENDENTE)
+  motivoInvalidacao    String?
+  usarComoAprendizado  Boolean         @default(false)
+  analiseProfunda      Boolean         @default(false)
+  criadoEm            DateTime        @default(now())
+  validadoEm          DateTime?
+
+  usuario              Usuario          @relation(fields: [usuarioId], references: [id])
+  unidade              Unidade?         @relation(fields: [unidadeId], references: [id])
+  cidade               Cidade?          @relation(fields: [cidadeId], references: [id])
+  arquivos             ArquivoAnalise[]
+  aprendizado          Aprendizado?
+
+  @@map("analises")
+}
+
+model ArquivoAnalise {
+  id           String   @id @default(cuid())
+  analiseId    String
+  tipo         String
+  nomeArquivo  String
+  arquivoUrl   String
+  criadoEm    DateTime @default(now())
+
+  analise      Analise  @relation(fields: [analiseId], references: [id], onDelete: Cascade)
+
+  @@map("arquivos_analise")
+}
+
+model Aprendizado {
+  id         String    @id @default(cuid())
+  analiseId  String    @unique
+  cidadeId   String?
+  resumo     String    @db.Text
+  embedding  Unsupported("vector(768)")?
+  ativo      Boolean   @default(true)
+  criadoEm  DateTime  @default(now())
+
+  analise    Analise   @relation(fields: [analiseId], references: [id])
+  cidade     Cidade?   @relation(fields: [cidadeId], references: [id])
+
+  @@map("aprendizados")
+}
+
+model Configuracao {
+  id        String   @id @default(cuid())
+  chave     String   @unique
+  valor     String
+  criadoEm DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@map("configuracoes")
+}
+
+model LogErro {
+  id        String   @id @default(cuid())
+  usuarioId String?
+  mensagem  String
+  detalhes  String?  @db.Text
+  criadoEm DateTime @default(now())
+
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id])
+
+  @@map("logs_erro")
+}
