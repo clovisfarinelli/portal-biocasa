@@ -1,0 +1,14 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npx prisma generate && next build",
+  "installCommand": "npm install",
+  "regions": ["gru1"],
+  "functions": {
+    "app/api/analises/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/arquivos/route.ts": {
+      "maxDuration": 120
+    }
+  }
+}
