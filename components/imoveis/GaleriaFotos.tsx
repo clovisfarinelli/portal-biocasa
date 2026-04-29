@@ -163,7 +163,7 @@ export default function GaleriaFotos({ imovelId, fotosIniciais, readOnly = false
               `}
             >
               <img
-                src={foto.url}
+                src={`/api/imoveis/fotos/download?url=${encodeURIComponent(foto.url)}`}
                 alt={`Foto ${index + 1}`}
                 className="w-full aspect-square object-cover"
               />

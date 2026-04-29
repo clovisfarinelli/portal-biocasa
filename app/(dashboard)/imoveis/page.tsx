@@ -251,7 +251,7 @@ export default function ImoveisPage() {
                   {/* Foto */}
                   <div className="relative aspect-[4/3] bg-escuro-700 flex-shrink-0">
                     {foto ? (
-                      <img src={foto} alt={imovel.codigoRef} className="w-full h-full object-cover" />
+                      <img src={`/api/imoveis/fotos/download?url=${encodeURIComponent(foto)}`} alt={imovel.codigoRef} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <svg className="w-12 h-12 text-escuro-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
