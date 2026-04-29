@@ -25,7 +25,7 @@ export default function GaleriaFotos({ imovelId, fotosIniciais, readOnly = false
     for (const arquivo of arquivos) {
       await uploadFoto(arquivo)
     }
-  }, [imovelId, fotos])
+  }, [imovelId])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

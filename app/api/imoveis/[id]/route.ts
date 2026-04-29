@@ -44,6 +44,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 const schemaAtualizarImovel = z.object({
+  codigoRef: z.string().optional(),
   nome: z.string().optional(),
   finalidade: z.string().optional(),
   tipo: z.string().optional(),

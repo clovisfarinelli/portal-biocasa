@@ -14,6 +14,7 @@ interface FotoItem {
 }
 
 async function logErro(usuarioId: string | null, mensagem: string, detalhes?: string) {
+  console.error(`[fotos] ${mensagem}`, detalhes ?? '')
   try {
     await prisma.logErro.create({ data: { usuarioId, mensagem, detalhes } })
   } catch {}
@@ -52,15 +53,24 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ erro: 'Erro ao ler o arquivo enviado' }, { status: 400 })
   }
 
-  const arquivo = formData.get('foto') as File | null
-  if (!arquivo) return NextResponse.json({ erro: 'Nenhum arquivo enviado (campo "foto")' }, { status: 400 })
+  // Aceita campo 'foto' ou 'file' para flexibilidade
+  const arquivo = (formData.get('foto') ?? formData.get('file')) as File | null
+  if (!arquivo) {
+    return NextResponse.json({ erro: 'Nenhum arquivo enviado (use campo "foto" no FormData)' }, { status: 400 })
+  }
 
   if (!arquivo.type.startsWith('image/')) {
-    return NextResponse.json({ erro: 'Apenas imagens são aceitas' }, { status: 400 })
+    return NextResponse.json({ erro: `Apenas imagens são aceitas. Recebido: ${arquivo.type}` }, { status: 400 })
+  }
+
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    await logErro(usuario.id, '[imoveis/fotos/POST] BLOB_READ_WRITE_TOKEN não configurado', '')
+    return NextResponse.json({ erro: 'Configuração de armazenamento ausente. Contate o administrador.' }, { status: 500 })
   }
 
   try {
-    const buffer = Buffer.from(await arquivo.arrayBuffer())
+    const arrayBuffer = await arquivo.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
 
     // Comprime para WebP 1920px max, qualidade 80
     const webpBuffer = await sharp(buffer)
@@ -89,8 +99,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     return NextResponse.json({ foto: novaFoto, fotos }, { status: 201 })
   } catch (err: any) {
-    await logErro(usuario.id, `[imoveis/${params.id}/fotos/POST] Erro no upload`, err?.message)
-    return NextResponse.json({ erro: 'Erro ao fazer upload da foto' }, { status: 500 })
+    const detalhes = `${err?.message ?? String(err)}\n${err?.stack?.split('\n').slice(0, 5).join('\n') ?? ''}`
+    await logErro(usuario.id, `[imoveis/${params.id}/fotos/POST] Erro no upload`, detalhes)
+    return NextResponse.json(
+      { erro: `Erro ao fazer upload: ${err?.message?.slice(0, 150) ?? 'erro desconhecido'}` },
+      { status: 500 }
+    )
   }
 }
 
