@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import GaleriaFotos from './GaleriaFotos'
 
@@ -341,6 +341,9 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
   const [salvando, setSalvando] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
   const [mensagem, setMensagem] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null)
+  const [buscandoCep, setBuscandoCep] = useState(false)
+  const [cepMensagem, setCepMensagem] = useState<string | null>(null)
+  const ultimoCepBuscadoRef = useRef<string>('')
 
   // ── Derived flags
   const tiposDisponiveis = form.finalidade === 'RESIDENCIAL' ? TIPOS_RESIDENCIAL : TIPOS_COMERCIAL
@@ -397,6 +400,45 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
       const novaLista = atual.includes(id) ? atual.filter(x => x !== id) : [...atual, id]
       return { ...prev, [lista]: novaLista }
     })
+  }
+
+  function formatarCep(valor: string): string {
+    const nums = valor.replace(/\D/g, '').slice(0, 8)
+    if (nums.length > 5) return `${nums.slice(0, 5)}-${nums.slice(5)}`
+    return nums
+  }
+
+  async function buscarCep(cepRaw: string) {
+    const nums = cepRaw.replace(/\D/g, '')
+    if (nums.length !== 8) return
+    if (nums === ultimoCepBuscadoRef.current) return
+
+    ultimoCepBuscadoRef.current = nums
+    setBuscandoCep(true)
+    setCepMensagem(null)
+
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${nums}/json/`)
+      if (!res.ok) throw new Error('network')
+      const data = await res.json()
+
+      if (data.erro) {
+        setCepMensagem('CEP não encontrado')
+        return
+      }
+
+      setForm(prev => ({
+        ...prev,
+        logradouro: prev.logradouro.trim() ? prev.logradouro : (data.logradouro ?? prev.logradouro),
+        bairro: prev.bairro.trim() ? prev.bairro : (data.bairro ?? prev.bairro),
+        cidade: prev.cidade.trim() ? prev.cidade : (data.localidade ?? prev.cidade),
+        estado: data.uf ?? prev.estado,
+      }))
+    } catch {
+      setCepMensagem('Erro ao buscar CEP, preencha manualmente')
+    } finally {
+      setBuscandoCep(false)
+    }
   }
 
   function validar(): string | null {
@@ -648,7 +690,32 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
           </div>
           <div>
             <Label>CEP</Label>
-            <Input {...campo('cep')} placeholder="00000-000" maxLength={9} />
+            <div className="relative">
+              <Input
+                value={form.cep}
+                onChange={e => {
+                  const formatted = formatarCep(e.target.value)
+                  set('cep', formatted)
+                  setCepMensagem(null)
+                  ultimoCepBuscadoRef.current = ''
+                  if (formatted.replace(/\D/g, '').length === 8) buscarCep(formatted)
+                }}
+                onBlur={() => buscarCep(form.cep)}
+                placeholder="00000-000"
+                maxLength={9}
+              />
+              {buscandoCep && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg className="w-4 h-4 animate-spin text-dourado-400" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+            {cepMensagem && (
+              <p className="text-xs mt-1 text-red-400">{cepMensagem}</p>
+            )}
           </div>
         </div>
 
