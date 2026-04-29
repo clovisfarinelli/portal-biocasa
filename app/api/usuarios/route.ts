@@ -9,7 +9,7 @@ const schemaCriarUsuario = z.object({
   nome: z.string().min(2),
   email: z.string().email(),
   senha: z.string().min(8),
-  perfil: z.enum(['MASTER', 'PROPRIETARIO', 'ESPECIALISTA']),
+  perfil: z.enum(['MASTER', 'PROPRIETARIO', 'ESPECIALISTA', 'ASSISTENTE', 'CORRETOR']),
   unidadeId: z.string().optional(),
 })
 
@@ -18,7 +18,8 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
 
   const usuario = session.user as any
-  if (usuario.perfil === 'ESPECIALISTA') {
+  const perfisSemAcesso = ['ESPECIALISTA', 'ASSISTENTE', 'CORRETOR']
+  if (perfisSemAcesso.includes(usuario.perfil)) {
     return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 })
   }
 
@@ -66,17 +67,22 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
 
   const operador = session.user as any
-  if (operador.perfil === 'ESPECIALISTA') {
+  const perfisSemAcesso = ['ESPECIALISTA', 'ASSISTENTE', 'CORRETOR']
+  if (perfisSemAcesso.includes(operador.perfil)) {
     return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 })
   }
 
   const body = await req.json()
   const dados = schemaCriarUsuario.parse(body)
 
-  // PROPRIETARIO só pode criar ESPECIALISTA na sua unidade
+  // PROPRIETARIO só pode criar ESPECIALISTA ou ASSISTENTE ou CORRETOR na sua unidade
   if (operador.perfil === 'PROPRIETARIO') {
-    if (dados.perfil !== 'ESPECIALISTA') {
-      return NextResponse.json({ erro: 'Proprietário só pode criar Especialistas' }, { status: 403 })
+    const perfilsPermitidos = ['ESPECIALISTA', 'ASSISTENTE', 'CORRETOR']
+    if (!perfilsPermitidos.includes(dados.perfil)) {
+      return NextResponse.json(
+        { erro: 'Proprietário só pode criar Especialistas, Assistentes e Corretores' },
+        { status: 403 }
+      )
     }
     dados.unidadeId = operador.unidadeId
   }

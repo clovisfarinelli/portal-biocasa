@@ -6,6 +6,7 @@ export const config = {
     '/usuarios/:path*',
     '/treinar-ia/:path*',
     '/analises-unidades/:path*',
+    '/imoveis/:path*',
     '/api/analises/:path*',
     '/api/usuarios/:path*',
     '/api/documentos/:path*',

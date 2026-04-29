@@ -13,6 +13,8 @@ enum Perfil {
   MASTER
   PROPRIETARIO
   ESPECIALISTA
+  ASSISTENTE
+  CORRETOR
 }
 
 enum StatusValidacao {
@@ -47,6 +49,7 @@ model Unidade {
 
   usuarios        Usuario[]
   analises        Analise[]
+  imoveis         Imovel[]
 
   @@map("unidades")
 }
@@ -177,4 +180,105 @@ model LogErro {
   usuario   Usuario? @relation(fields: [usuarioId], references: [id])
 
   @@map("logs_erro")
+}
+
+model Imovel {
+  id               String   @id @default(cuid())
+
+  // Identificação
+  codigoRef        String   @unique
+  nome             String?
+
+  // Classificação
+  finalidade       String
+  tipo             String
+  subtipo          String?
+
+  // Endereço
+  logradouro       String
+  numero           String?
+  complemento      String?
+  bairro           String
+  cidade           String
+  estado           String   @default("SP")
+  cep              String?
+
+  // Edifício/Condomínio
+  edificio         String?
+  andar            Int?
+  acesso           String?
+
+  // Proprietário
+  proprietario     String?
+  telProprietario  String?
+
+  // Captação
+  captador         String?
+  parceria         Boolean  @default(false)
+  nomeParceiro     String?
+
+  // Modalidade e valores
+  modalidade       String
+  valorVenda       Float?
+  valorLocacao     Float?
+  valorCondominio  Float?
+  valorIptu        Float?
+
+  // Características
+  areaUtil         Float?
+  areaTotal        Float?
+  dormitorios      String?
+  suites           String?
+  totalBanheiros   String?
+  vagasGaragem     String?
+  tipoGaragem      String?
+  situacaoImovel   String?
+  dependencia      Boolean  @default(false)
+  vistaMar         Boolean  @default(false)
+  tipoVistaMar     String?
+
+  // Facilidades (JSON arrays serializados)
+  facilidadesImovel       String?
+  facilidadesImovelOutros String?
+  facilidadesCond         String?
+  facilidadesCondOutros   String?
+
+  // Negociação
+  aceitaPermuta    Boolean  @default(false)
+  aceitaFinanc     Boolean  @default(false)
+  documentacaoOk   Boolean  @default(false)
+  exclusividade    Boolean  @default(false)
+
+  // Publicação
+  publicarSite     Boolean  @default(false)
+  publicarPortais  Boolean  @default(false)
+  destaque         Boolean  @default(false)
+
+  // Links e códigos
+  linkSite         String?
+  linkExterno      String?
+  codIptu          String?
+  codMatricula     String?
+
+  // Descrições
+  descricao        String?  @db.Text
+  obsInternas      String?  @db.Text
+
+  // Comissão
+  percComissao     Float?
+
+  // Mídia — JSON array: [{url, ordem, principal}]
+  fotos            String?  @db.Text
+
+  // Status
+  situacao         String   @default("DISPONIVEL")
+
+  // Relações
+  unidadeId        String
+  unidade          Unidade  @relation(fields: [unidadeId], references: [id])
+
+  dataCadastro     DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("imoveis")
 }
