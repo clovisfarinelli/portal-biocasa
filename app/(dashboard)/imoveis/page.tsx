@@ -173,29 +173,24 @@ export default function ImoveisPage() {
       {/* Filtros */}
       <div className="card mb-6">
         {/* Linha 1 */}
-        <div className="grid grid-cols-3 gap-3 mb-3">
-          <input
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && aplicarFiltros()}
-            placeholder="Buscar por ref, nome, endereço..."
-            className="input-field col-span-1 text-sm"
-          />
-          <select value={modalidade} onChange={e => setModalidade(e.target.value)} className="input-field text-sm">
+        <div className="flex flex-wrap gap-3 mb-3">
+          <select value={modalidade} onChange={e => setModalidade(e.target.value)} className="input-field text-sm w-36">
             <option value="">Modalidade</option>
             <option value="VENDA">Venda</option>
             <option value="LOCACAO">Locação</option>
             <option value="AMBOS">Ambos</option>
           </select>
-          <select value={situacao} onChange={e => setSituacao(e.target.value)} className="input-field text-sm">
-            <option value="">Situação</option>
-            <option value="DISPONIVEL">Disponível</option>
-            <option value="VENDIDO">Vendido</option>
-            <option value="ALUGADO">Alugado</option>
+          <select value={tipo} onChange={e => setTipo(e.target.value)} className="input-field text-sm w-44">
+            <option value="">Tipo</option>
+            <option value="APARTAMENTO">Apartamento</option>
+            <option value="CASA">Casa</option>
+            <option value="TERRENO">Terreno</option>
+            <option value="CHACARA">Chácara</option>
+            <option value="LOJA">Loja</option>
+            <option value="SALA">Sala</option>
+            <option value="CASA_COMERCIAL">Casa Comercial</option>
+            <option value="GALPAO">Galpão</option>
           </select>
-        </div>
-        {/* Linha 2 */}
-        <div className="flex flex-wrap gap-3">
           <input
             value={cidade}
             onChange={e => setCidade(e.target.value)}
@@ -208,17 +203,6 @@ export default function ImoveisPage() {
             placeholder="Bairro"
             className="input-field text-sm w-36"
           />
-          <select value={tipo} onChange={e => setTipo(e.target.value)} className="input-field text-sm w-40">
-            <option value="">Tipo</option>
-            <option value="APARTAMENTO">Apartamento</option>
-            <option value="CASA">Casa</option>
-            <option value="TERRENO">Terreno</option>
-            <option value="CHACARA">Chácara</option>
-            <option value="LOJA">Loja</option>
-            <option value="SALA">Sala</option>
-            <option value="CASA_COMERCIAL">Casa Comercial</option>
-            <option value="GALPAO">Galpão</option>
-          </select>
           <select value={dormitorios} onChange={e => setDormitorios(e.target.value)} className="input-field text-sm w-40">
             <option value="">Dormitórios</option>
             <option value="KIT_STUDIO">Kitnet/Studio</option>
@@ -227,6 +211,22 @@ export default function ImoveisPage() {
             <option value="3">3</option>
             <option value="4_MAIS">4+</option>
           </select>
+          <select value={situacao} onChange={e => setSituacao(e.target.value)} className="input-field text-sm w-36">
+            <option value="">Situação</option>
+            <option value="DISPONIVEL">Disponível</option>
+            <option value="VENDIDO">Vendido</option>
+            <option value="ALUGADO">Alugado</option>
+          </select>
+        </div>
+        {/* Linha 2 */}
+        <div className="flex gap-3">
+          <input
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && aplicarFiltros()}
+            placeholder="Buscar por ref, nome, endereço..."
+            className="input-field text-sm flex-1"
+          />
           <button onClick={aplicarFiltros} className="btn-primary text-sm px-5">
             Filtrar
           </button>

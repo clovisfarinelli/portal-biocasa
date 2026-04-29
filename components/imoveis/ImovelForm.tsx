@@ -1108,7 +1108,10 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
       {modoEdicao && imovelId ? (
         <div className="card mb-6">
           <SecaoTitulo>5. Fotos</SecaoTitulo>
-          <GerenciarFotosModal imovelId={imovelId} fotosIniciais={fotosIniciais} />
+          <p className="text-sm text-escuro-300">
+            {fotosIniciais.length} foto{fotosIniciais.length !== 1 ? 's' : ''} cadastrada{fotosIniciais.length !== 1 ? 's' : ''}.
+            {' '}Use o botão "Gerenciar Fotos" abaixo para adicionar, remover ou reordenar.
+          </p>
         </div>
       ) : !modoEdicao && (
         <div className="card mb-6 opacity-60">
@@ -1120,8 +1123,8 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
       )}
 
       {/* ─── Botões de ação ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex flex-wrap gap-2">
           {perfil === 'MASTER' && modoEdicao && (
             <button
               onClick={excluir}
@@ -1133,6 +1136,23 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
               </svg>
               {excluindo ? 'Excluindo...' : 'Excluir Imóvel'}
             </button>
+          )}
+          {modoEdicao && imovelId && (
+            <>
+              {fotosIniciais.length > 0 && (
+                <a
+                  href={`/api/imoveis/${imovelId}/fotos/zip`}
+                  download
+                  className="btn-secondary flex items-center gap-2 text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Baixar Fotos
+                </a>
+              )}
+              <GerenciarFotosModal imovelId={imovelId} fotosIniciais={fotosIniciais} />
+            </>
           )}
         </div>
         <div className="flex gap-3">

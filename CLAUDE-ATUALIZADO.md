@@ -1,5 +1,5 @@
 # Portal Biocasa — Guia de Arquitetura para Claude Code
-*Atualizado: Abril 2026 (Sessão 2: Módulo de Imóveis — Interface completa)*
+*Atualizado: Abril 2026 (Sessão 5b: Imóveis — Interface, Filtros, Galeria e Download)*
 
 Este arquivo documenta a arquitetura completa, decisões técnicas e convenções do projeto.
 
@@ -88,10 +88,13 @@ portal-biocasa/
 │   │   ├── usuarios/
 │   │   └── imoveis/                # ← NOVO
 │   │       ├── route.ts            # GET (lista + n8n + busca texto) + POST
+│   │       ├── fotos/
+│   │       │   └── download/       # GET — proxy autenticado (Blob privado)
 │   │       └── [id]/
 │   │           ├── route.ts        # GET + PUT (incl. fotos) + DELETE
 │   │           └── fotos/
-│   │               └── route.ts    # POST (upload+compress) + DELETE
+│   │               ├── route.ts    # POST (upload+compress) + DELETE
+│   │               └── zip/route.ts # GET — download ZIP de todas as fotos
 ├── app/(dashboard)/
 │   ├── imoveis/page.tsx            # Listagem com filtros + cards + paginação
 │   ├── imoveis/novo/page.tsx       # Formulário novo imóvel
@@ -108,7 +111,8 @@ portal-biocasa/
 │   ├── UserManagement.tsx
 │   └── imoveis/                        # ← NOVO
 │       ├── ImovelForm.tsx              # Formulário completo (5 seções, client)
-│       ├── GaleriaFotos.tsx            # Upload/reordenação com react-dropzone
+│       ├── GaleriaFotos.tsx            # Upload + drag-reorder + Salvar Ordem
+│       ├── GerenciarFotosModal.tsx     # Modal com galeria (ESC/click-outside/scroll lock)
 │       └── CopiarFichaButton.tsx       # Botão copiar ficha WhatsApp (client)
 ├── lib/
 │   ├── auth.ts
@@ -159,10 +163,10 @@ portal-biocasa/
 - DocumentoIa → Cidade (nullable = global)
 - **Imovel → Unidade (N:1)** ← NOVO
 
-## API Endpoints — Módulo de Imóveis (NOVO)
+## API Endpoints — Módulo de Imóveis
 
 ### GET /api/imoveis
-- Lista imóveis com filtros: `finalidade`, `tipo`, `cidade`, `modalidade`, `situacao`, `quartos`, `valor_min`, `valor_max`, `destaque`, `publicar_site`, `unidadeId` (MASTER only), `pagina`
+- Lista imóveis com filtros: `modalidade`, `tipo`, `cidade`, `bairro`, `dormitorios`, `situacao`, `valor_min`, `valor_max`, `destaque`, `publicar_site`, `busca` (texto livre), `unidadeId` (MASTER only), `pagina`
 - Auth dupla: session NextAuth **ou** header `x-api-key: <API_KEY_N8N>` (para n8n)
 - MASTER vê todos; demais perfis veem apenas sua unidade
 
@@ -179,15 +183,16 @@ portal-biocasa/
 
 ### PUT /api/imoveis/[id]
 - Edição parcial — MASTER, PROPRIETARIO, ASSISTENTE
-- Schema `.strict()` — rejeita campos desconhecidos
+- Schema Zod `.strict()` — rejeita campos desconhecidos
+- Usado também pelo Salvar Ordem da galeria (envia apenas `fotos`)
 
 ### DELETE /api/imoveis/[id]
 - Exclusão — apenas MASTER
 
 ### POST /api/imoveis/[id]/fotos
-- Upload de imagem via `multipart/form-data` (campo `foto`)
-- Comprime com sharp → WebP, max 1920×1920px, qualidade 80
-- Faz upload ao Vercel Blob em `/imoveis/{id}/`
+- Upload via `multipart/form-data` (campo `foto`)
+- Comprime com **sharp** → WebP, max 1920×1920px, qualidade 80
+- Salva no Vercel Blob (private) em `/imoveis/{id}/`
 - Primeira foto vira principal automaticamente
 - Retorna `{ foto, fotos }`
 
@@ -195,6 +200,18 @@ portal-biocasa/
 - Body: `{ url: "https://..." }`
 - Remove do Vercel Blob + atualiza JSON do campo fotos
 - Renumera ordens; promove nova principal se necessário
+
+### GET /api/imoveis/[id]/fotos/zip
+- Download ZIP de todas as fotos do imóvel
+- Auth: session NextAuth — restrição por unidade para não-MASTER
+- Usa **JSZip** (tipo `arraybuffer` para compatibilidade com NextResponse)
+- Arquivos nomeados `{codigoRef}_{n}.webp`
+- Retorna com `Content-Disposition: attachment; filename="{codigoRef}-fotos.zip"`
+
+### GET /api/imoveis/fotos/download
+- Proxy autenticado para fotos privadas do Vercel Blob
+- Query param: `url` (URL do blob)
+- Busca com `Authorization: Bearer ${BLOB_READ_WRITE_TOKEN}` e repassa ao cliente
 
 ## Autenticação
 
@@ -234,8 +251,8 @@ portal-biocasa/
 
 ### Vercel Blob
 - Store: portal-biocasa-blob (região GRU1 São Paulo)
-- Incorporação: access private, proxy autenticado /api/arquivos/download
-- **Imóveis (fotos): access public**, pasta `/imoveis/{id}/`
+- Incorporação: `access: 'private'`, proxy autenticado `/api/arquivos/download`
+- **Imóveis (fotos): `access: 'private'`**, pasta `/imoveis/{id}/`, proxy `/api/imoveis/fotos/download`
 - Versão @vercel/blob: 2.3.3
 
 ## Variáveis de Ambiente
@@ -272,6 +289,52 @@ curl https://portal-biocasa.vercel.app/api/diagnostico?debug=biocasa2026
 export \$(grep -v '^#' .env.local | xargs) && npx prisma db push
 ```
 
+## Módulo de Imóveis — Interface e Componentes
+
+### Listagem `/imoveis` — Filtros e Cards
+- **Linha 1 de filtros:** Modalidade (w-36) | Tipo (w-44) | Cidade (w-36) | Bairro (w-36) | Dormitórios (w-40) | Situação (w-36)
+- **Linha 2 de filtros:** Busca livre (flex-1) | Filtrar | Limpar
+- **Card:** badge (tipo) no footer; valor em destaque; linha cond/IPTU; linha características (dorms/suítes/vagas/m²)
+
+### Formulário `ImovelForm.tsx` — 5 Seções
+1. Identificação e Classificação — codigoRef, tipo, finalidade, modalidade, situacao, destaque, publicarSite, parceria
+2. Endereço — CEP → Logradouro → Nº → Complemento → Bairro → Cidade → Estado → Edifício (CEP com auto-fill via ViaCEP)
+3. Detalhes Técnicos — áreas, quartos, suítes, banheiros, garagem, facilidades, descrição
+4. Dados Comerciais — valor venda/locação/condomínio/IPTU (máscaras BRL), proprietário, telefone, comissão, links, observações
+5. Fotos — contador estático; botões no footer: "Baixar Fotos" (link ZIP) + "Gerenciar Fotos" (abre modal)
+
+**Máscaras de entrada:**
+- Monetário (`CampoMonetario`): armazena dígitos puros; exibe formatado BRL no blur; raw no focus
+- Telefone: `(00) 00000-0000` (celular) ou `(00) 0000-0000` (fixo) — detectado pelo 3º dígito `=== '9'`
+- CEP: auto-fill via ViaCEP ao digitar 8 dígitos (preenche logradouro, bairro, cidade, estado)
+
+### `GaleriaFotos.tsx`
+- Dropzone (react-dropzone) para upload de novas fotos
+- HTML5 drag-and-drop nativo para reordenação
+- **Reordenação lazy:** arrastar atualiza estado local; banner amarelo "Salvar Ordem" aparece; botão faz PUT no imóvel
+- Definir foto principal: clique no botão de estrela (PUT imediato)
+- `readOnly` mode: apenas visualiza (usado na página de detalhes)
+- Callback `onFotosChange?: (fotos) => void` notifica o pai sobre mudanças
+
+### `GerenciarFotosModal.tsx`
+- Botão "Gerenciar Fotos" abre modal fullscreen (z-50)
+- Fecha com ESC, clique no overlay ou botão X
+- Bloqueia scroll do body enquanto aberto
+- Header mostra contador de fotos atualizado via `onFotosChange`
+- Conteúdo: `<GaleriaFotos>` com overflow-y-auto
+
+### Página de Detalhes `/imoveis/[id]` — 4 Seções
+1. **Dados Comerciais:** valores, características (dorms/suítes/banheiros/garagem/áreas)
+2. **Endereço e Imóvel:** endereço completo, situação do imóvel, vista mar, facilidades, descrição
+3. **Captação e Administrativo:** proprietário, comissão, publicações, links, observações internas
+4. **Fotos:** `<GaleriaFotos readOnly>` — sempre por último
+
+### ViaCEP — Auto-fill de CEP
+- Disparado quando o campo CEP atinge 8 dígitos (sem máscara)
+- Endpoint: `https://viacep.com.br/ws/{cep}/json/`
+- Preenche: logradouro, bairro, cidade, estado
+- Campos ficam editáveis para correção manual
+
 ## Convenções de Código
 - Arquivos: PascalCase componentes, camelCase libs
 - Variáveis/funções: camelCase em português
@@ -291,13 +354,16 @@ export \$(grep -v '^#' .env.local | xargs) && npx prisma db push
 | 1 | Busca semântica real com text-embedding-004 | Alta |
 | 2 | Análise Profunda com Google Search (400 bad request) | Alta |
 | 3 | Firewall UFW porta 5433 — liberar apenas IPs Vercel | Alta |
-| 4 | Reset mensal analises_mes (cron job) | Média |
-| 5 | Logo real da Biocasa | Média |
-| 6 | Responsivo mobile completo | Média |
-| 7 | Paginação no histórico da Sidebar | Baixa |
-| 8 | Notificação email quando limite atingido | Baixa |
-| 9 | ~~Frontend do módulo de imóveis~~ ✅ Concluído | — |
-| 10 | Adicionar API_KEY_N8N no painel Vercel (env de produção) | Alta |
+| 4 | Adicionar API_KEY_N8N no painel Vercel (env de produção) | Alta |
+| 5 | Script de importação Kenlo (~125 imóveis) via API /api/imoveis | Alta |
+| 6 | Site público de imóveis (portal de busca para clientes) | Média |
+| 7 | Automações n8n WhatsApp (notificações de novos imóveis) | Média |
+| 8 | Integrações de portais (ZAP, Viva Real, OLX) via n8n | Média |
+| 9 | Reset mensal analises_mes (cron job) | Média |
+| 10 | Logo real da Biocasa | Média |
+| 11 | Responsivo mobile completo | Média |
+| 12 | Paginação no histórico da Sidebar | Baixa |
+| 13 | Notificação email quando limite atingido | Baixa |
 
 ## Usuário inicial (seed)
 | Email | Senha | Perfil |

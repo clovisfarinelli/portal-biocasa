@@ -166,15 +166,7 @@ export default async function VisualizarImovelPage({ params }: { params: { id: s
         </div>
       </div>
 
-      {/* Galeria */}
-      {fotos.length > 0 && (
-        <div className="card mb-6">
-          <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Fotos</h3>
-          <GaleriaFotos imovelId={imovel.id} fotosIniciais={fotos} readOnly />
-        </div>
-      )}
-
-      {/* Seção 1 — Dados Comerciais */}
+      {/* Seção 1 — Dados Comerciais + Características */}
       <div className="card mb-4">
         <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Dados Comerciais</h3>
         <Linha label="Código Ref." valor={imovel.codigoRef} />
@@ -188,14 +180,18 @@ export default async function VisualizarImovelPage({ params }: { params: { id: s
         <Linha label="IPTU Mensal" valor={imovel.valorIptu ? formatarMoeda(imovel.valorIptu) : null} />
         <Linha label="Área Útil" valor={imovel.areaUtil ? `${imovel.areaUtil} m²` : null} />
         <Linha label="Área Total" valor={imovel.areaTotal ? `${imovel.areaTotal} m²` : null} />
+        <Linha label="Dormitórios" valor={imovel.dormitorios ? (LABEL_DORMITORIOS[imovel.dormitorios] ?? imovel.dormitorios) : null} />
+        <Linha label="Suítes" valor={imovel.suites ? (LABEL_SUITES[imovel.suites] ?? imovel.suites) : null} />
+        <Linha label="Banheiros" valor={imovel.totalBanheiros} />
+        <Linha label="Garagem" valor={imovel.vagasGaragem ? `${LABEL_VAGAS[imovel.vagasGaragem] ?? imovel.vagasGaragem} vaga(s)${imovel.tipoGaragem ? ` · ${LABEL_GARAGEM[imovel.tipoGaragem] ?? imovel.tipoGaragem}` : ''}` : null} />
         <Linha label="Aceita Permuta" valor={imovel.aceitaPermuta || undefined} />
         <Linha label="Aceita Financiamento" valor={imovel.aceitaFinanc || undefined} />
         <Linha label="Documentação OK" valor={imovel.documentacaoOk || undefined} />
       </div>
 
-      {/* Endereço */}
+      {/* Seção 2 — Endereço e Dados do Imóvel */}
       <div className="card mb-4">
-        <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Endereço</h3>
+        <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Endereço e Imóvel</h3>
         <Linha label="Logradouro" valor={[imovel.logradouro, imovel.numero, imovel.complemento].filter(Boolean).join(', ')} />
         <Linha label="Bairro" valor={imovel.bairro} />
         <Linha label="Cidade / Estado" valor={`${imovel.cidade} - ${imovel.estado}`} />
@@ -203,15 +199,6 @@ export default async function VisualizarImovelPage({ params }: { params: { id: s
         <Linha label="Edifício" valor={imovel.edificio} />
         <Linha label="Andar" valor={imovel.andar} />
         <Linha label="Acesso" valor={imovel.acesso === 'ESCADAS' ? 'Escadas' : imovel.acesso === 'ELEVADOR' ? 'Elevador' : imovel.acesso} />
-      </div>
-
-      {/* Características */}
-      <div className="card mb-4">
-        <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Características</h3>
-        <Linha label="Dormitórios" valor={imovel.dormitorios ? (LABEL_DORMITORIOS[imovel.dormitorios] ?? imovel.dormitorios) : null} />
-        <Linha label="Suítes" valor={imovel.suites ? (LABEL_SUITES[imovel.suites] ?? imovel.suites) : null} />
-        <Linha label="Banheiros" valor={imovel.totalBanheiros} />
-        <Linha label="Garagem" valor={imovel.vagasGaragem ? `${LABEL_VAGAS[imovel.vagasGaragem] ?? imovel.vagasGaragem} vaga(s)${imovel.tipoGaragem ? ` · ${LABEL_GARAGEM[imovel.tipoGaragem] ?? imovel.tipoGaragem}` : ''}` : null} />
         <Linha label="Situação Imóvel" valor={imovel.situacaoImovel} />
         <Linha label="Dependência" valor={imovel.dependencia || undefined} />
         <Linha label="Vista Mar" valor={imovel.vistaMar ? `Sim${imovel.tipoVistaMar ? ` · ${imovel.tipoVistaMar === 'FRENTE' ? 'Frente' : 'Lateral'}` : ''}` : null} />
@@ -221,30 +208,23 @@ export default async function VisualizarImovelPage({ params }: { params: { id: s
         {facilCond.length > 0 && (
           <Linha label="Facilidades Cond." valor={facilCond.map(f => labelFacilCond[f] ?? f).join(', ')} />
         )}
+        {imovel.descricao && (
+          <div className="py-1.5 border-b border-escuro-600 last:border-0">
+            <span className="text-escuro-300 text-sm block mb-1">Descrição</span>
+            <p className="text-white text-sm whitespace-pre-wrap leading-relaxed">{imovel.descricao}</p>
+          </div>
+        )}
       </div>
 
-      {/* Captação */}
+      {/* Seção 3 — Captação e Administrativo */}
       <div className="card mb-4">
-        <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Captação</h3>
+        <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Captação e Administrativo</h3>
         <Linha label="Proprietário" valor={imovel.proprietario} />
         <Linha label="Contato" valor={imovel.telProprietario} />
         <Linha label="Captador" valor={imovel.captador} />
-        <Linha label="Parceria" valor={imovel.parceria ? `Sim${imovel.nomeParceiro ? ` · ${imovel.nomeParceiro}` : ''}` : null} />
+        <Linha label="Parceria" valor={imovel.parceria ? 'Sim' : null} />
         <Linha label="Exclusividade" valor={imovel.exclusividade || undefined} />
         <Linha label="Comissão" valor={imovel.percComissao ? `${imovel.percComissao}%` : null} />
-      </div>
-
-      {/* Descrição */}
-      {imovel.descricao && (
-        <div className="card mb-4">
-          <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Descrição</h3>
-          <p className="text-escuro-100 text-sm whitespace-pre-wrap leading-relaxed">{imovel.descricao}</p>
-        </div>
-      )}
-
-      {/* Administrativo */}
-      <div className="card mb-4">
-        <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Administrativo</h3>
         <Linha label="Publicar no Site" valor={imovel.publicarSite || undefined} />
         <Linha label="Publicar Portais" valor={imovel.publicarPortais || undefined} />
         <Linha label="Destaque" valor={imovel.destaque || undefined} />
@@ -254,13 +234,19 @@ export default async function VisualizarImovelPage({ params }: { params: { id: s
         <Linha label="Link do Site" valor={imovel.linkSite} />
         <Linha label="Unidade" valor={imovel.unidade?.nome} />
         <Linha label="Cadastrado em" valor={new Date(imovel.dataCadastro).toLocaleDateString('pt-BR')} />
+        {imovel.obsInternas && (
+          <div className="py-1.5 border-b border-escuro-600 last:border-0">
+            <span className="text-escuro-300 text-sm block mb-1">Observações Internas</span>
+            <p className="text-white text-sm whitespace-pre-wrap">{imovel.obsInternas}</p>
+          </div>
+        )}
       </div>
 
-      {/* Obs internas */}
-      {imovel.obsInternas && (
+      {/* Seção 4 — Fotos (por último) */}
+      {fotos.length > 0 && (
         <div className="card mb-4">
-          <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Observações Internas</h3>
-          <p className="text-escuro-100 text-sm whitespace-pre-wrap">{imovel.obsInternas}</p>
+          <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Fotos</h3>
+          <GaleriaFotos imovelId={imovel.id} fotosIniciais={fotos} readOnly />
         </div>
       )}
     </div>
