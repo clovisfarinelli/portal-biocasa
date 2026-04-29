@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
 
     if (arquivo) {
       const blob = await put(`documentos-ia/${Date.now()}-${arquivo.name}`, arquivo, {
-        access: 'public',
+        access: 'private',
       })
       arquivoUrl = blob.url
 

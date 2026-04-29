@@ -80,7 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const nomeArquivo = `imoveis/${params.id}/${Date.now()}.webp`
     const blob = await put(nomeArquivo, webpBuffer, {
-      access: 'public',
+      access: 'private',
       contentType: 'image/webp',
     })
 
