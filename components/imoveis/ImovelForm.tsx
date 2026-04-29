@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import GaleriaFotos from './GaleriaFotos'
+import GerenciarFotosModal from './GerenciarFotosModal'
 import { formatarMoeda } from '@/lib/utils'
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -1108,7 +1108,7 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
       {modoEdicao && imovelId ? (
         <div className="card mb-6">
           <SecaoTitulo>5. Fotos</SecaoTitulo>
-          <GaleriaFotos imovelId={imovelId} fotosIniciais={fotosIniciais} />
+          <GerenciarFotosModal imovelId={imovelId} fotosIniciais={fotosIniciais} />
         </div>
       ) : !modoEdicao && (
         <div className="card mb-6 opacity-60">

@@ -83,15 +83,16 @@ export default function ImoveisPage() {
 
   // Filtros
   const [busca, setBusca] = useState('')
-  const [finalidade, setFinalidade] = useState('')
-  const [tipo, setTipo] = useState('')
   const [modalidade, setModalidade] = useState('')
   const [situacao, setSituacao] = useState('')
   const [cidade, setCidade] = useState('')
+  const [bairro, setBairro] = useState('')
+  const [tipo, setTipo] = useState('')
+  const [dormitorios, setDormitorios] = useState('')
 
   // Filtros aplicados (só buscam ao clicar Filtrar)
   const [filtrosAtivos, setFiltrosAtivos] = useState({
-    busca: '', finalidade: '', tipo: '', modalidade: '', situacao: '', cidade: '',
+    busca: '', modalidade: '', situacao: '', cidade: '', bairro: '', tipo: '', dormitorios: '',
   })
 
   const podeEscrever = ['MASTER', 'PROPRIETARIO', 'ASSISTENTE'].includes(perfil ?? '')
@@ -103,11 +104,12 @@ export default function ImoveisPage() {
     const params = new URLSearchParams()
     params.set('pagina', String(pg))
     if (filtros.busca) params.set('busca', filtros.busca)
-    if (filtros.finalidade) params.set('finalidade', filtros.finalidade)
     if (filtros.tipo) params.set('tipo', filtros.tipo)
     if (filtros.modalidade) params.set('modalidade', filtros.modalidade)
     if (filtros.situacao) params.set('situacao', filtros.situacao)
     if (filtros.cidade) params.set('cidade', filtros.cidade)
+    if (filtros.bairro) params.set('bairro', filtros.bairro)
+    if (filtros.dormitorios) params.set('dormitorios', filtros.dormitorios)
 
     try {
       const res = await fetch(`/api/imoveis?${params}`)
@@ -127,13 +129,13 @@ export default function ImoveisPage() {
 
   function aplicarFiltros() {
     setPagina(1)
-    setFiltrosAtivos({ busca, finalidade, tipo, modalidade, situacao, cidade })
+    setFiltrosAtivos({ busca, modalidade, situacao, cidade, bairro, tipo, dormitorios })
   }
 
   function limparFiltros() {
-    setBusca(''); setFinalidade(''); setTipo(''); setModalidade(''); setSituacao(''); setCidade('')
+    setBusca(''); setModalidade(''); setSituacao(''); setCidade(''); setBairro(''); setTipo(''); setDormitorios('')
     setPagina(1)
-    setFiltrosAtivos({ busca: '', finalidade: '', tipo: '', modalidade: '', situacao: '', cidade: '' })
+    setFiltrosAtivos({ busca: '', modalidade: '', situacao: '', cidade: '', bairro: '', tipo: '', dormitorios: '' })
   }
 
   async function excluir(id: string, codigo: string) {
@@ -149,12 +151,6 @@ export default function ImoveisPage() {
       setExcluindoId(null)
     }
   }
-
-  const tiposResiencial = ['', 'CASA', 'APARTAMENTO', 'TERRENO', 'CHACARA']
-  const tiposComercial = ['', 'SALA', 'LOJA', 'CASA_COMERCIAL', 'GALPAO']
-  const tiposDisponiveis = finalidade === 'RESIDENCIAL' ? tiposResiencial
-    : finalidade === 'COMERCIAL' ? tiposComercial
-    : [...tiposResiencial, ...tiposComercial.slice(1)]
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -176,25 +172,15 @@ export default function ImoveisPage() {
 
       {/* Filtros */}
       <div className="card mb-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-3">
+        {/* Linha 1 */}
+        <div className="grid grid-cols-3 gap-3 mb-3">
           <input
             value={busca}
             onChange={e => setBusca(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && aplicarFiltros()}
-            placeholder="Buscar por ref, nome, bairro..."
-            className="input-field lg:col-span-2 text-sm"
+            placeholder="Buscar por ref, nome, endereço..."
+            className="input-field col-span-1 text-sm"
           />
-          <select value={finalidade} onChange={e => { setFinalidade(e.target.value); setTipo('') }} className="input-field text-sm">
-            <option value="">Finalidade</option>
-            <option value="RESIDENCIAL">Residencial</option>
-            <option value="COMERCIAL">Comercial</option>
-          </select>
-          <select value={tipo} onChange={e => setTipo(e.target.value)} className="input-field text-sm">
-            <option value="">Tipo</option>
-            {tiposDisponiveis.filter(Boolean).map(t => (
-              <option key={t} value={t}>{LABEL_TIPO[t] ?? t}</option>
-            ))}
-          </select>
           <select value={modalidade} onChange={e => setModalidade(e.target.value)} className="input-field text-sm">
             <option value="">Modalidade</option>
             <option value="VENDA">Venda</option>
@@ -208,13 +194,39 @@ export default function ImoveisPage() {
             <option value="ALUGADO">Alugado</option>
           </select>
         </div>
-        <div className="flex items-center gap-3">
+        {/* Linha 2 */}
+        <div className="flex flex-wrap gap-3">
           <input
             value={cidade}
             onChange={e => setCidade(e.target.value)}
             placeholder="Cidade"
-            className="input-field text-sm w-48"
+            className="input-field text-sm w-36"
           />
+          <input
+            value={bairro}
+            onChange={e => setBairro(e.target.value)}
+            placeholder="Bairro"
+            className="input-field text-sm w-36"
+          />
+          <select value={tipo} onChange={e => setTipo(e.target.value)} className="input-field text-sm w-40">
+            <option value="">Tipo</option>
+            <option value="APARTAMENTO">Apartamento</option>
+            <option value="CASA">Casa</option>
+            <option value="TERRENO">Terreno</option>
+            <option value="CHACARA">Chácara</option>
+            <option value="LOJA">Loja</option>
+            <option value="SALA">Sala</option>
+            <option value="CASA_COMERCIAL">Casa Comercial</option>
+            <option value="GALPAO">Galpão</option>
+          </select>
+          <select value={dormitorios} onChange={e => setDormitorios(e.target.value)} className="input-field text-sm w-40">
+            <option value="">Dormitórios</option>
+            <option value="KIT_STUDIO">Kitnet/Studio</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4_MAIS">4+</option>
+          </select>
           <button onClick={aplicarFiltros} className="btn-primary text-sm px-5">
             Filtrar
           </button>

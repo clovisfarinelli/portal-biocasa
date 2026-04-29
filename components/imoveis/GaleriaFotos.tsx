@@ -13,13 +13,21 @@ interface Props {
   imovelId: string
   fotosIniciais: FotoItem[]
   readOnly?: boolean
+  onFotosChange?: (fotos: FotoItem[]) => void
 }
 
-export default function GaleriaFotos({ imovelId, fotosIniciais, readOnly = false }: Props) {
+export default function GaleriaFotos({ imovelId, fotosIniciais, readOnly = false, onFotosChange }: Props) {
   const [fotos, setFotos] = useState<FotoItem[]>(fotosIniciais)
   const [enviando, setEnviando] = useState(false)
+  const [salvandoOrdem, setSalvandoOrdem] = useState(false)
+  const [ordemPendente, setOrdemPendente] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const dragIndexRef = useRef<number | null>(null)
+
+  function atualizarFotos(novasFotos: FotoItem[]) {
+    setFotos(novasFotos)
+    onFotosChange?.(novasFotos)
+  }
 
   const onDrop = useCallback(async (arquivos: File[]) => {
     for (const arquivo of arquivos) {
@@ -43,7 +51,7 @@ export default function GaleriaFotos({ imovelId, fotosIniciais, readOnly = false
       const res = await fetch(`/api/imoveis/${imovelId}/fotos`, { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) { setErro(data.erro ?? 'Erro no upload'); return }
-      setFotos(data.fotos)
+      atualizarFotos(data.fotos)
     } catch {
       setErro('Erro de conexão no upload')
     } finally {
@@ -62,7 +70,7 @@ export default function GaleriaFotos({ imovelId, fotosIniciais, readOnly = false
       })
       const data = await res.json()
       if (!res.ok) { setErro(data.erro ?? 'Erro ao remover'); return }
-      setFotos(data.fotos)
+      atualizarFotos(data.fotos)
     } catch {
       setErro('Erro de conexão ao remover')
     }
@@ -70,7 +78,7 @@ export default function GaleriaFotos({ imovelId, fotosIniciais, readOnly = false
 
   async function setPrincipal(url: string) {
     const novasFotos = fotos.map(f => ({ ...f, principal: f.url === url }))
-    setFotos(novasFotos)
+    atualizarFotos(novasFotos)
     try {
       await fetch(`/api/imoveis/${imovelId}`, {
         method: 'PUT',
@@ -90,7 +98,7 @@ export default function GaleriaFotos({ imovelId, fotosIniciais, readOnly = false
     e.preventDefault()
   }
 
-  async function onDropFoto(e: React.DragEvent, targetIndex: number) {
+  function onDropFoto(e: React.DragEvent, targetIndex: number) {
     e.preventDefault()
     const fromIndex = dragIndexRef.current
     if (fromIndex === null || fromIndex === targetIndex) return
@@ -99,17 +107,25 @@ export default function GaleriaFotos({ imovelId, fotosIniciais, readOnly = false
     const [moved] = novasFotos.splice(fromIndex, 1)
     novasFotos.splice(targetIndex, 0, moved)
     const reordenadas = novasFotos.map((f, i) => ({ ...f, ordem: i }))
-    setFotos(reordenadas)
+    atualizarFotos(reordenadas)
     dragIndexRef.current = null
+    setOrdemPendente(true)
+  }
 
+  async function salvarOrdem() {
+    setSalvandoOrdem(true)
+    setErro(null)
     try {
       await fetch(`/api/imoveis/${imovelId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fotos: JSON.stringify(reordenadas) }),
+        body: JSON.stringify({ fotos: JSON.stringify(fotos) }),
       })
+      setOrdemPendente(false)
     } catch {
       setErro('Erro ao salvar ordem das fotos')
+    } finally {
+      setSalvandoOrdem(false)
     }
   }
 
@@ -143,6 +159,19 @@ export default function GaleriaFotos({ imovelId, fotosIniciais, readOnly = false
               <p className="text-escuro-300 text-xs mt-1">JPG, PNG, WebP — máx 20MB por foto</p>
             </>
           )}
+        </div>
+      )}
+
+      {ordemPendente && !readOnly && (
+        <div className="mb-3 flex items-center justify-between bg-dourado-400/10 border border-dourado-400/40 rounded-lg px-4 py-2">
+          <span className="text-dourado-400 text-sm">Ordem alterada — salve para persistir</span>
+          <button
+            onClick={salvarOrdem}
+            disabled={salvandoOrdem}
+            className="text-sm bg-dourado-400 text-escuro-700 font-semibold px-3 py-1 rounded hover:bg-dourado-300 transition-colors disabled:opacity-60"
+          >
+            {salvandoOrdem ? 'Salvando...' : 'Salvar Ordem'}
+          </button>
         </div>
       )}
 

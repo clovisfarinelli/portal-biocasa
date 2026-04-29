@@ -32,9 +32,11 @@ const schemaFiltros = z.object({
   finalidade: z.string().optional(),
   tipo: z.string().optional(),
   cidade: z.string().optional(),
+  bairro: z.string().optional(),
   modalidade: z.string().optional(),
   situacao: z.string().optional(),
   quartos: z.string().optional(),
+  dormitorios: z.string().optional(),
   valor_min: z.string().optional(),
   valor_max: z.string().optional(),
   destaque: z.string().optional(),
@@ -73,9 +75,11 @@ export async function GET(req: NextRequest) {
   if (filtros.finalidade) where.finalidade = filtros.finalidade
   if (filtros.tipo) where.tipo = filtros.tipo
   if (filtros.cidade) where.cidade = { contains: filtros.cidade, mode: 'insensitive' }
+  if (filtros.bairro) where.bairro = { contains: filtros.bairro, mode: 'insensitive' }
   if (filtros.modalidade) where.modalidade = filtros.modalidade
   if (filtros.situacao) where.situacao = filtros.situacao
   if (filtros.quartos) where.dormitorios = filtros.quartos
+  if (filtros.dormitorios) where.dormitorios = filtros.dormitorios
   if (filtros.destaque === 'true') where.destaque = true
   if (filtros.publicar_site === 'true') where.publicarSite = true
   if (filtros.unidadeId && auth.tipo === 'session' && (auth.usuario as any).perfil === 'MASTER') {
