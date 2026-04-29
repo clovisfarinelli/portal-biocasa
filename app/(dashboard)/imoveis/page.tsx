@@ -19,6 +19,13 @@ interface Imovel {
   modalidade: string
   valorVenda: number | null
   valorLocacao: number | null
+  valorCondominio: number | null
+  valorIptu: number | null
+  areaUtil: number | null
+  areaTotal: number | null
+  dormitorios: string | null
+  suites: string | null
+  vagasGaragem: string | null
   situacao: string
   destaque: boolean
   publicarSite: boolean
@@ -246,6 +253,26 @@ export default function ImoveisPage() {
                 ? (imovel.valorLocacao ? `${formatarMoeda(imovel.valorLocacao)}/mês` : null)
                 : (imovel.valorVenda ? formatarMoeda(imovel.valorVenda) : null)
 
+              const area = imovel.areaUtil ?? imovel.areaTotal
+              const caracteristicas: string[] = []
+              if (imovel.dormitorios) {
+                const d = imovel.dormitorios
+                caracteristicas.push(
+                  d === 'KIT_STUDIO' ? 'Kit/Studio' : d === '4_MAIS' ? '4+ Dorms' : `${d} Dorm${d !== '1' ? 's' : ''}`
+                )
+              }
+              if (imovel.suites && imovel.suites !== 'NAO_TEM') {
+                const s = imovel.suites
+                caracteristicas.push(s === '3_MAIS' ? '3+ Suítes' : `${s} Suíte${s !== '1' ? 's' : ''}`)
+              }
+              if (imovel.vagasGaragem && imovel.vagasGaragem !== 'SEM_VAGA') {
+                const v = imovel.vagasGaragem
+                caracteristicas.push(
+                  v === '3_MAIS' ? '3+ Vagas' : v === 'MOTOS' ? 'Motos' : `${v} Vaga${v !== '1' ? 's' : ''}`
+                )
+              }
+              if (area) caracteristicas.push(`${area}m²`)
+
               return (
                 <div key={imovel.id} className="card p-0 overflow-hidden flex flex-col hover:border-escuro-300 transition-colors">
                   {/* Foto */}
@@ -259,10 +286,6 @@ export default function ImoveisPage() {
                         </svg>
                       </div>
                     )}
-                    {/* Badges no canto */}
-                    <div className="absolute top-2 left-2 flex flex-col gap-1">
-                      <BadgeSituacao situacao={imovel.situacao} />
-                    </div>
                     <div className="absolute top-2 right-2 flex gap-1">
                       {imovel.destaque && (
                         <span title="Destaque" className="bg-dourado-400 text-escuro-700 rounded p-0.5">
@@ -283,9 +306,9 @@ export default function ImoveisPage() {
 
                   {/* Info */}
                   <div className="p-3 flex-1 flex flex-col">
-                    <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="flex items-start justify-between gap-2 mb-0.5">
                       <span className="text-dourado-400 font-bold text-sm">{imovel.codigoRef}</span>
-                      <span className="text-escuro-300 text-xs">{LABEL_MODALIDADE[imovel.modalidade] ?? imovel.modalidade}</span>
+                      <span className="text-escuro-300 text-xs flex-shrink-0">{LABEL_MODALIDADE[imovel.modalidade] ?? imovel.modalidade}</span>
                     </div>
                     {imovel.nome && (
                       <p className="text-white text-sm font-medium truncate mb-0.5">{imovel.nome}</p>
@@ -297,38 +320,55 @@ export default function ImoveisPage() {
                     <p className="text-escuro-300 text-xs truncate mb-2">
                       {imovel.bairro}, {imovel.cidade} - {imovel.estado}
                     </p>
+
                     {valorDisplay && (
-                      <p className="text-white font-semibold text-sm mb-3">{valorDisplay}</p>
+                      <p className="text-white font-bold text-base mb-1">{valorDisplay}</p>
                     )}
 
-                    {/* Botões */}
-                    <div className="flex gap-2 mt-auto">
-                      <Link
-                        href={`/imoveis/${imovel.id}`}
-                        className="flex-1 text-center py-1.5 rounded-lg bg-escuro-700 hover:bg-escuro-600 border border-escuro-400 text-xs text-escuro-100 hover:text-white transition-colors"
-                      >
-                        Ver
-                      </Link>
-                      {podeEscrever && (
+                    {(imovel.valorCondominio || imovel.valorIptu) && (
+                      <p className="text-escuro-200 text-xs mb-1.5 flex gap-3">
+                        {imovel.valorCondominio ? <span>Cond: {formatarMoeda(imovel.valorCondominio)}</span> : null}
+                        {imovel.valorIptu ? <span>IPTU: {formatarMoeda(imovel.valorIptu)}</span> : null}
+                      </p>
+                    )}
+
+                    {caracteristicas.length > 0 && (
+                      <p className="text-escuro-300 text-xs mb-2 flex flex-wrap gap-x-2.5">
+                        {caracteristicas.map((c, i) => <span key={i}>{c}</span>)}
+                      </p>
+                    )}
+
+                    {/* Rodapé: badge + botões */}
+                    <div className="flex items-center justify-between gap-2 mt-auto pt-2 border-t border-escuro-600">
+                      <BadgeSituacao situacao={imovel.situacao} />
+                      <div className="flex gap-1.5">
                         <Link
-                          href={`/imoveis/${imovel.id}/editar`}
-                          className="flex-1 text-center py-1.5 rounded-lg bg-dourado-400/10 hover:bg-dourado-400/20 border border-dourado-400/40 text-xs text-dourado-400 transition-colors"
+                          href={`/imoveis/${imovel.id}`}
+                          className="py-1 px-2.5 rounded-lg bg-escuro-700 hover:bg-escuro-600 border border-escuro-400 text-xs text-escuro-100 hover:text-white transition-colors"
                         >
-                          Editar
+                          Ver
                         </Link>
-                      )}
-                      {podeExcluir && (
-                        <button
-                          onClick={() => excluir(imovel.id, imovel.codigoRef)}
-                          disabled={excluindoId === imovel.id}
-                          className="px-2.5 py-1.5 rounded-lg bg-red-900/20 hover:bg-red-900/40 border border-red-800/40 text-red-400 transition-colors disabled:opacity-50"
-                          title="Excluir"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      )}
+                        {podeEscrever && (
+                          <Link
+                            href={`/imoveis/${imovel.id}/editar`}
+                            className="py-1 px-2.5 rounded-lg bg-dourado-400/10 hover:bg-dourado-400/20 border border-dourado-400/40 text-xs text-dourado-400 transition-colors"
+                          >
+                            Editar
+                          </Link>
+                        )}
+                        {podeExcluir && (
+                          <button
+                            onClick={() => excluir(imovel.id, imovel.codigoRef)}
+                            disabled={excluindoId === imovel.id}
+                            className="py-1 px-2 rounded-lg bg-red-900/20 hover:bg-red-900/40 border border-red-800/40 text-red-400 transition-colors disabled:opacity-50"
+                            title="Excluir"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

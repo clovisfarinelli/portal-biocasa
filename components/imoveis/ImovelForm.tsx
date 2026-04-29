@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import GaleriaFotos from './GaleriaFotos'
+import { formatarMoeda } from '@/lib/utils'
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -55,6 +56,19 @@ const FACILIDADES_COND = [
 ]
 
 const SUFFIX_PARCERIA = '\n\nImóvel em Parceria Imobiliária'
+
+function formatarTelefone(valor: string): string {
+  const nums = valor.replace(/\D/g, '').slice(0, 11)
+  if (!nums) return ''
+  if (nums.length <= 2) return `(${nums}`
+  if (nums.length <= 6) return `(${nums.slice(0, 2)}) ${nums.slice(2)}`
+  const isCelular = nums[2] === '9'
+  if (isCelular) {
+    if (nums.length <= 7) return `(${nums.slice(0, 2)}) ${nums.slice(2)}`
+    return `(${nums.slice(0, 2)}) ${nums.slice(2, 7)}-${nums.slice(7)}`
+  }
+  return `(${nums.slice(0, 2)}) ${nums.slice(2, 6)}-${nums.slice(6)}`
+}
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -221,7 +235,7 @@ function imovelParaForm(imovel: ImovelCompleto): FormState {
     andar: imovel.andar != null ? String(imovel.andar) : '',
     acesso: imovel.acesso ?? '',
     proprietario: imovel.proprietario ?? '',
-    telProprietario: imovel.telProprietario ?? '',
+    telProprietario: imovel.telProprietario ? formatarTelefone(imovel.telProprietario) : '',
     captador: imovel.captador ?? '',
     parceria: imovel.parceria,
     nomeParceiro: imovel.nomeParceiro ?? '',
@@ -326,6 +340,27 @@ function SecaoTitulo({ children }: { children: React.ReactNode }) {
     <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">
       {children}
     </h3>
+  )
+}
+
+function CampoMonetario({ value, onChange, placeholder }: {
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
+  const [focado, setFocado] = useState(false)
+  const n = parseFloat(value)
+  const displayValue = !focado && value && !isNaN(n) ? formatarMoeda(n) : value
+  return (
+    <Input
+      type="text"
+      inputMode="numeric"
+      value={displayValue}
+      placeholder={placeholder ?? 'R$ 0,00'}
+      onFocus={() => setFocado(true)}
+      onBlur={() => setFocado(false)}
+      onChange={e => onChange(e.target.value.replace(/\D/g, ''))}
+    />
   )
 }
 
@@ -477,10 +512,9 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
       andar: ni(form.andar),
       acesso: form.acesso || undefined,
       proprietario: form.proprietario.trim() || undefined,
-      telProprietario: form.telProprietario.trim() || undefined,
+      telProprietario: form.telProprietario.replace(/\D/g, '') || undefined,
       captador: form.captador.trim() || undefined,
       parceria: form.parceria,
-      nomeParceiro: form.parceria ? (form.nomeParceiro.trim() || undefined) : undefined,
       modalidade: form.modalidade,
       valorVenda: mostrarVenda ? n(form.valorVenda) : undefined,
       valorLocacao: mostrarLocacao ? n(form.valorLocacao) : undefined,
@@ -668,26 +702,7 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
         </div>
 
         {/* Endereço */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div className="col-span-2">
-            <Label required>Logradouro</Label>
-            <Input {...campo('logradouro')} placeholder="Rua, Av., Al., etc." />
-          </div>
-          <div>
-            <Label>Número</Label>
-            <Input {...campo('numero')} placeholder="123" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div>
-            <Label>Complemento</Label>
-            <Input {...campo('complemento')} placeholder="Apto 12" />
-          </div>
-          <div>
-            <Label required>Bairro</Label>
-            <Input {...campo('bairro')} placeholder="Centro" />
-          </div>
+        <div className="grid grid-cols-4 gap-4 mb-4">
           <div>
             <Label>CEP</Label>
             <div className="relative">
@@ -717,6 +732,25 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
               <p className="text-xs mt-1 text-red-400">{cepMensagem}</p>
             )}
           </div>
+          <div className="col-span-2">
+            <Label required>Logradouro</Label>
+            <Input {...campo('logradouro')} placeholder="Rua, Av., Al., etc." />
+          </div>
+          <div>
+            <Label>Número</Label>
+            <Input {...campo('numero')} placeholder="123" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <Label>Complemento</Label>
+            <Input {...campo('complemento')} placeholder="Apto 12" />
+          </div>
+          <div>
+            <Label required>Bairro</Label>
+            <Input {...campo('bairro')} placeholder="Centro" />
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-4 mb-4">
@@ -741,7 +775,12 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
           </div>
           <div>
             <Label>Contato do Proprietário</Label>
-            <Input {...campo('telProprietario')} placeholder="(11) 99999-9999" />
+            <Input
+              value={form.telProprietario}
+              onChange={e => set('telProprietario', formatarTelefone(e.target.value))}
+              placeholder="(11) 99999-9999"
+              maxLength={15}
+            />
           </div>
         </div>
 
@@ -752,11 +791,6 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
 
         <div className="flex flex-wrap items-center gap-4 mb-4">
           <Toggle checked={form.parceria} onChange={toggleParceria} label="Parceria Imobiliária" />
-          {form.parceria && (
-            <div className="flex-1 min-w-48">
-              <Input {...campo('nomeParceiro')} placeholder="Nome do parceiro" />
-            </div>
-          )}
         </div>
 
         {/* Modalidade e Valores */}
@@ -789,22 +823,22 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
             {mostrarVenda && (
               <div>
                 <Label required>Valor de Venda (R$)</Label>
-                <Input {...campo('valorVenda')} type="number" min="0" step="1000" placeholder="450000" />
+                <CampoMonetario value={form.valorVenda} onChange={v => set('valorVenda', v)} />
               </div>
             )}
             {mostrarLocacao && (
               <div>
                 <Label required>Valor de Locação (R$/mês)</Label>
-                <Input {...campo('valorLocacao')} type="number" min="0" step="100" placeholder="3500" />
+                <CampoMonetario value={form.valorLocacao} onChange={v => set('valorLocacao', v)} />
               </div>
             )}
             <div>
               <Label>Condomínio (R$/mês)</Label>
-              <Input {...campo('valorCondominio')} type="number" min="0" step="10" placeholder="800" />
+              <CampoMonetario value={form.valorCondominio} onChange={v => set('valorCondominio', v)} />
             </div>
             <div>
               <Label>IPTU Mensal (R$)</Label>
-              <Input {...campo('valorIptu')} type="number" min="0" step="10" placeholder="250" />
+              <CampoMonetario value={form.valorIptu} onChange={v => set('valorIptu', v)} />
             </div>
           </div>
 
