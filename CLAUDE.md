@@ -4,9 +4,11 @@
 Este arquivo documenta a arquitetura completa, decisões técnicas e convenções do projeto para uso em sessões futuras.
 
 ## Visão Geral
-Portal de **Análise de Viabilidade Imobiliária** com IA, desenvolvido para a Biocasa.
-- Analisa imóveis e terrenos usando Google Gemini 2.5 Flash
-- Três perfis de acesso: MASTER, PROPRIETARIO, ESPECIALISTA
+Portal de **Análise de Viabilidade Imobiliária** com IA + **Módulo de Cadastro de Imóveis**, desenvolvido para a Biocasa.
+- Módulo de Incorporação: analisa imóveis e terrenos usando Google Gemini 2.5 Flash
+- Módulo de Imóveis: cadastro e gestão completa de imóveis para venda/locação
+- Cinco perfis de acesso: MASTER, PROPRIETARIO, ESPECIALISTA, ASSISTENTE, CORRETOR
+- Flags de acesso por módulo: acessoImob e acessoIncorp (para ESPECIALISTA, ASSISTENTE, CORRETOR)
 - Documentos de referência por cidade melhoram análises com o tempo
 - Sistema de aprendizado baseado em validações dos usuários
 - Em produção: portal-biocasa.vercel.app

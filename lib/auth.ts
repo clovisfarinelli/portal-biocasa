@@ -36,6 +36,8 @@ export const authOptions: NextAuthOptions = {
           perfil: usuario.perfil,
           unidadeId: usuario.unidadeId,
           unidadeNome: usuario.unidade?.nome ?? null,
+          acessoImob: usuario.acessoImob,
+          acessoIncorp: usuario.acessoIncorp,
         }
       },
     }),
@@ -47,6 +49,8 @@ export const authOptions: NextAuthOptions = {
         token.perfil = (user as any).perfil
         token.unidadeId = (user as any).unidadeId
         token.unidadeNome = (user as any).unidadeNome
+        token.acessoImob = (user as any).acessoImob
+        token.acessoIncorp = (user as any).acessoIncorp
       }
       return token
     },
@@ -56,6 +60,8 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).perfil = token.perfil
         ;(session.user as any).unidadeId = token.unidadeId
         ;(session.user as any).unidadeNome = token.unidadeNome
+        ;(session.user as any).acessoImob = token.acessoImob
+        ;(session.user as any).acessoIncorp = token.acessoIncorp
       }
       return session
     },

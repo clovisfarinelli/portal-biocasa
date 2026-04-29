@@ -37,8 +37,9 @@ export default function Sidebar({ session }: { session: Session }) {
   const [consumo, setConsumo] = useState<ConsumoMes>({ totalAnalises: 0, totalTokens: 0, totalCusto: 0 })
   const [recolhido, setRecolhido] = useState(false)
 
-  const temIncorporacao = ['MASTER', 'PROPRIETARIO', 'ESPECIALISTA'].includes(perfil)
-  const temImoveis = ['MASTER', 'PROPRIETARIO', 'ASSISTENTE', 'CORRETOR'].includes(perfil)
+  const isAdmin = ['MASTER', 'PROPRIETARIO'].includes(perfil)
+  const temIncorporacao = isAdmin || usuario.acessoIncorp === true
+  const temImoveis = isAdmin || usuario.acessoImob === true
 
   useEffect(() => {
     if (temIncorporacao) carregarHistorico()

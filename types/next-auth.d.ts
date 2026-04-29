@@ -8,6 +8,8 @@ declare module 'next-auth' {
     perfil: Perfil
     unidadeId: string | null
     unidadeNome: string | null
+    acessoImob: boolean
+    acessoIncorp: boolean
   }
 
   interface Session {
@@ -24,5 +26,7 @@ declare module 'next-auth/jwt' {
     perfil: Perfil
     unidadeId: string | null
     unidadeNome: string | null
+    acessoImob: boolean
+    acessoIncorp: boolean
   }
 }

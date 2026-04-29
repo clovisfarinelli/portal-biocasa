@@ -9,9 +9,11 @@ const schemaAtualizar = z.object({
   nome: z.string().min(2).optional(),
   email: z.string().email().optional(),
   senha: z.string().min(8).optional(),
-  perfil: z.enum(['MASTER', 'PROPRIETARIO', 'ESPECIALISTA']).optional(),
+  perfil: z.enum(['MASTER', 'PROPRIETARIO', 'ESPECIALISTA', 'ASSISTENTE', 'CORRETOR']).optional(),
   unidadeId: z.string().optional(),
   ativo: z.boolean().optional(),
+  acessoImob: z.boolean().optional(),
+  acessoIncorp: z.boolean().optional(),
 })
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -19,7 +21,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
 
   const operador = session.user as any
-  if (operador.perfil === 'ESPECIALISTA') {
+  if (['ESPECIALISTA', 'ASSISTENTE', 'CORRETOR'].includes(operador.perfil)) {
     return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 })
   }
 
@@ -54,7 +56,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
 
   const operador = session.user as any
-  if (operador.perfil === 'ESPECIALISTA') {
+  if (['ESPECIALISTA', 'ASSISTENTE', 'CORRETOR'].includes(operador.perfil)) {
     return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 })
   }
 

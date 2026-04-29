@@ -29,23 +29,40 @@ interface Usuario {
   perfil: string
   ativo: boolean
   criadoEm: string
+  acessoImob: boolean
+  acessoIncorp: boolean
   unidade?: { nome: string; limiteAnalises: number }
   analisesMes: number
   custoMes: number
 }
 
-const PERFIS = ['MASTER', 'PROPRIETARIO', 'ESPECIALISTA'] as const
+const TODOS_PERFIS = ['MASTER', 'PROPRIETARIO', 'ESPECIALISTA', 'ASSISTENTE', 'CORRETOR'] as const
+const PERFIS_SUBORDINADOS = ['ESPECIALISTA', 'ASSISTENTE', 'CORRETOR'] as const
+const LABEL_PERFIL: Record<string, string> = {
+  MASTER: 'Master',
+  PROPRIETARIO: 'Proprietário',
+  ESPECIALISTA: 'Especialista',
+  ASSISTENTE: 'Assistente',
+  CORRETOR: 'Corretor',
+}
 
 const corPerfil: Record<string, string> = {
   MASTER: 'text-red-300 bg-red-900/30 border border-red-800',
   PROPRIETARIO: 'text-dourado-300 bg-dourado-400/10 border border-dourado-400/30',
   ESPECIALISTA: 'text-blue-300 bg-blue-900/30 border border-blue-800',
+  ASSISTENTE: 'text-purple-300 bg-purple-900/30 border border-purple-800',
+  CORRETOR: 'text-green-300 bg-green-900/30 border border-green-800',
+}
+
+const ordemPerfil: Record<string, number> = {
+  MASTER: 0, PROPRIETARIO: 1, ESPECIALISTA: 2, ASSISTENTE: 3, CORRETOR: 4,
 }
 
 export default function UserManagement({ session }: { session: Session }) {
   const operador = session.user as any
   const perfil = operador.perfil as string
   const isMaster = perfil === 'MASTER'
+  const isProprietario = perfil === 'PROPRIETARIO'
 
   const [aba, setAba] = useState<'usuarios' | 'unidades'>('usuarios')
 
@@ -62,14 +79,14 @@ export default function UserManagement({ session }: { session: Session }) {
     nome: '', email: '', senha: '',
     perfil: 'ESPECIALISTA',
     unidadeId: operador.unidadeId ?? '',
+    acessoImob: false,
+    acessoIncorp: false,
   })
 
   // ── Filtros e ordenação (MASTER) ─────────────────────────────────────────
   const [filtroUnidade, setFiltroUnidade] = useState('')
   const [filtroPerfil, setFiltroPerfil] = useState('')
   const [ordenacao, setOrdenacao] = useState<'perfil' | 'recente' | 'nome' | 'consumo'>('perfil')
-
-  const ordemPerfil: Record<string, number> = { MASTER: 0, PROPRIETARIO: 1, ESPECIALISTA: 2 }
 
   const usuariosFiltrados = usuarios
     .filter(u => !filtroUnidade || u.unidade?.nome === filtroUnidade || (filtroUnidade === '__sem__' && !u.unidade))
@@ -84,6 +101,11 @@ export default function UserManagement({ session }: { session: Session }) {
       if (ordenacao === 'consumo') return (b.custoMes ?? 0) - (a.custoMes ?? 0)
       return 0
     })
+
+  // Perfis disponíveis no dropdown do modal conforme quem está logado
+  const perfisDisponiveisNoModal = isMaster
+    ? TODOS_PERFIS
+    : PERFIS_SUBORDINADOS
 
   // ── Estado Unidades ──────────────────────────────────────────────────────
   const [unidades, setUnidades] = useState<Unidade[]>([])
@@ -155,6 +177,8 @@ export default function UserManagement({ session }: { session: Session }) {
         email: formUsuario.email,
         perfil: formUsuario.perfil,
         unidadeId: formUsuario.unidadeId || undefined,
+        acessoImob: formUsuario.acessoImob,
+        acessoIncorp: formUsuario.acessoIncorp,
       }
       if (formUsuario.senha) body.senha = formUsuario.senha
 
@@ -196,12 +220,21 @@ export default function UserManagement({ session }: { session: Session }) {
 
   function abrirEdicaoUsuario(u: Usuario) {
     setEditandoUsuario(u)
-    setFormUsuario({ nome: u.nome, email: u.email, senha: '', perfil: u.perfil, unidadeId: '' })
+    setFormUsuario({
+      nome: u.nome, email: u.email, senha: '', perfil: u.perfil, unidadeId: '',
+      acessoImob: u.acessoImob ?? false,
+      acessoIncorp: u.acessoIncorp ?? false,
+    })
     setShowModalUsuario(true)
   }
 
   function resetFormUsuario() {
-    setFormUsuario({ nome: '', email: '', senha: '', perfil: 'ESPECIALISTA', unidadeId: operador.unidadeId ?? '' })
+    setFormUsuario({
+      nome: '', email: '', senha: '', perfil: 'ESPECIALISTA',
+      unidadeId: operador.unidadeId ?? '',
+      acessoImob: false,
+      acessoIncorp: false,
+    })
     setErroUsuario('')
   }
 
@@ -217,7 +250,6 @@ export default function UserManagement({ session }: { session: Session }) {
     setErroUnidade('')
     try {
       if (editandoUnidade) {
-        // Edição: apenas nome e limite
         const res = await fetch(`/api/unidades/${editandoUnidade.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -232,7 +264,6 @@ export default function UserManagement({ session }: { session: Session }) {
           return
         }
       } else {
-        // Criação: unidade + proprietário
         const res = await fetch('/api/unidades', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -275,6 +306,8 @@ export default function UserManagement({ session }: { session: Session }) {
     setFormUnidade({ nome: '', limiteAnalises: 50, nomeProprietario: '', emailProprietario: '', senhaProprietario: '' })
     setErroUnidade('')
   }
+
+  const perfilAtualESubordinado = PERFIS_SUBORDINADOS.includes(formUsuario.perfil as any)
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -361,7 +394,7 @@ export default function UserManagement({ session }: { session: Session }) {
             className="input-field w-auto text-sm py-2"
           >
             <option value="">Todos os perfis</option>
-            {PERFIS.map(p => <option key={p} value={p}>{p}</option>)}
+            {TODOS_PERFIS.map(p => <option key={p} value={p}>{LABEL_PERFIL[p]}</option>)}
           </select>
 
           <select
@@ -406,6 +439,7 @@ export default function UserManagement({ session }: { session: Session }) {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-escuro-200 uppercase tracking-wider">Email</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-escuro-200 uppercase tracking-wider">Perfil</th>
                     {isMaster && <th className="px-4 py-3 text-left text-xs font-semibold text-escuro-200 uppercase tracking-wider">Unidade</th>}
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-escuro-200 uppercase tracking-wider">Módulos</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-escuro-200 uppercase tracking-wider">Análises/mês</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-escuro-200 uppercase tracking-wider">Custo/mês</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-escuro-200 uppercase tracking-wider">Status</th>
@@ -418,7 +452,7 @@ export default function UserManagement({ session }: { session: Session }) {
                       <td className="px-4 py-3 text-sm text-white font-medium">{u.nome}</td>
                       <td className="px-4 py-3 text-sm text-escuro-200">{u.email}</td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${corPerfil[u.perfil] ?? ''}`}>{u.perfil}</span>
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${corPerfil[u.perfil] ?? ''}`}>{LABEL_PERFIL[u.perfil] ?? u.perfil}</span>
                       </td>
                       {isMaster && (
                         <td className="px-4 py-3 text-sm text-escuro-200">
@@ -426,6 +460,23 @@ export default function UserManagement({ session }: { session: Session }) {
                           {u.unidade && <span className="text-xs text-escuro-300 ml-1">(lim: {u.unidade.limiteAnalises})</span>}
                         </td>
                       )}
+                      <td className="px-4 py-3">
+                        {['MASTER', 'PROPRIETARIO'].includes(u.perfil) ? (
+                          <span className="text-xs text-escuro-300 italic">Total</span>
+                        ) : (
+                          <div className="flex gap-1.5">
+                            {u.acessoImob && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-escuro-600 border border-escuro-400 text-escuro-100">IMOB</span>
+                            )}
+                            {u.acessoIncorp && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-escuro-600 border border-escuro-400 text-escuro-100">INCORP</span>
+                            )}
+                            {!u.acessoImob && !u.acessoIncorp && (
+                              <span className="text-xs text-escuro-400 italic">Nenhum</span>
+                            )}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-sm text-right text-white">{u.analisesMes}</td>
                       <td className="px-4 py-3 text-sm text-right text-dourado-400 font-semibold">{formatarMoeda(u.custoMes)}</td>
                       <td className="px-4 py-3 text-center">
@@ -447,7 +498,7 @@ export default function UserManagement({ session }: { session: Session }) {
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               {u.ativo
-                                ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 115.636 5.636m12.728 12.728L5.636 5.636" />
                                 : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                               }
                             </svg>
@@ -568,22 +619,59 @@ export default function UserManagement({ session }: { session: Session }) {
                 <label className="label">{editandoUsuario ? 'Nova Senha (deixe em branco para manter)' : 'Senha'}</label>
                 <input type="password" value={formUsuario.senha} onChange={e => setFormUsuario(f => ({ ...f, senha: e.target.value }))} className="input-field" placeholder={editandoUsuario ? '••••••••' : 'Mínimo 8 caracteres'} />
               </div>
+
+              {/* Perfil — MASTER vê todos; PROPRIETARIO vê apenas subordinados */}
+              {(isMaster || isProprietario) && (
+                <div>
+                  <label className="label">Perfil</label>
+                  <select
+                    value={formUsuario.perfil}
+                    onChange={e => setFormUsuario(f => ({ ...f, perfil: e.target.value }))}
+                    className="input-field"
+                  >
+                    {perfisDisponiveisNoModal.map(p => (
+                      <option key={p} value={p}>{LABEL_PERFIL[p]}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Unidade — apenas MASTER */}
               {isMaster && (
-                <>
-                  <div>
-                    <label className="label">Perfil</label>
-                    <select value={formUsuario.perfil} onChange={e => setFormUsuario(f => ({ ...f, perfil: e.target.value }))} className="input-field">
-                      {PERFIS.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
+                <div>
+                  <label className="label">Unidade</label>
+                  <select value={formUsuario.unidadeId} onChange={e => setFormUsuario(f => ({ ...f, unidadeId: e.target.value }))} className="input-field">
+                    <option value="">Selecione...</option>
+                    {unidadesSelect.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Flags de acesso — apenas para perfis subordinados */}
+              {perfilAtualESubordinado && (
+                <div>
+                  <label className="label">Módulos de acesso</label>
+                  <div className="flex gap-6 mt-1">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formUsuario.acessoImob}
+                        onChange={e => setFormUsuario(f => ({ ...f, acessoImob: e.target.checked }))}
+                        className="w-4 h-4 rounded accent-dourado-400"
+                      />
+                      <span className="text-sm text-escuro-200">IMOB — Imóveis</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formUsuario.acessoIncorp}
+                        onChange={e => setFormUsuario(f => ({ ...f, acessoIncorp: e.target.checked }))}
+                        className="w-4 h-4 rounded accent-dourado-400"
+                      />
+                      <span className="text-sm text-escuro-200">INCORP — Incorporação</span>
+                    </label>
                   </div>
-                  <div>
-                    <label className="label">Unidade</label>
-                    <select value={formUsuario.unidadeId} onChange={e => setFormUsuario(f => ({ ...f, unidadeId: e.target.value }))} className="input-field">
-                      <option value="">Selecione...</option>
-                      {unidadesSelect.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
-                    </select>
-                  </div>
-                </>
+                </div>
               )}
             </div>
             {erroUsuario && <div className="mt-4 bg-red-900/30 border border-red-700 text-red-300 rounded-lg px-4 py-2.5 text-sm">{erroUsuario}</div>}

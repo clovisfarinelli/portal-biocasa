@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import GaleriaFotos from '@/components/imoveis/GaleriaFotos'
 import CopiarFichaButton from '@/components/imoveis/CopiarFichaButton'
+import CopiarTextoButton from '@/components/imoveis/CopiarTextoButton'
 import { formatarMoeda } from '@/lib/utils'
 
 const LABEL_TIPO: Record<string, string> = {
@@ -230,7 +231,15 @@ export default async function VisualizarImovelPage({ params }: { params: { id: s
         <Linha label="Destaque" valor={imovel.destaque || undefined} />
         <Linha label="Cód. IPTU" valor={imovel.codIptu} />
         <Linha label="Cód. Matrícula" valor={imovel.codMatricula} />
-        <Linha label="Link Externo" valor={imovel.linkExterno} />
+        {imovel.linkExterno ? (
+          <div className="flex gap-2 py-1.5 border-b border-escuro-600 last:border-0">
+            <span className="text-escuro-300 text-sm min-w-36 shrink-0">Link Externo</span>
+            <span className="text-white text-sm break-all flex items-center">
+              {imovel.linkExterno}
+              <CopiarTextoButton texto={imovel.linkExterno} />
+            </span>
+          </div>
+        ) : null}
         <Linha label="Link do Site" valor={imovel.linkSite} />
         <Linha label="Unidade" valor={imovel.unidade?.nome} />
         <Linha label="Cadastrado em" valor={new Date(imovel.dataCadastro).toLocaleDateString('pt-BR')} />

@@ -62,6 +62,8 @@ model Usuario {
   perfil       Perfil
   unidadeId    String?
   ativo        Boolean  @default(true)
+  acessoImob   Boolean  @default(false)
+  acessoIncorp Boolean  @default(false)
   criadoEm    DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 

@@ -83,17 +83,17 @@ export default function ImoveisPage() {
 
   // Filtros
   const [busca, setBusca] = useState('')
-  const [modalidade, setModalidade] = useState('')
+  const [modalidade, setModalidade] = useState('VENDA')
   const [cidade, setCidade] = useState('')
   const [bairro, setBairro] = useState('')
-  const [tipo, setTipo] = useState('')
+  const [tipo, setTipo] = useState('APARTAMENTO')
   const [dormitorios, setDormitorios] = useState('')
   const [faixaValor, setFaixaValor] = useState('')
   const [ordenar, setOrdenar] = useState('')
 
   // Filtros aplicados (só buscam ao clicar Filtrar)
   const [filtrosAtivos, setFiltrosAtivos] = useState({
-    busca: '', modalidade: '', cidade: '', bairro: '', tipo: '', dormitorios: '', faixaValor: '', ordenar: '',
+    busca: '', modalidade: 'VENDA', cidade: '', bairro: '', tipo: 'APARTAMENTO', dormitorios: '', faixaValor: '', ordenar: '',
   })
 
   const podeEscrever = ['MASTER', 'PROPRIETARIO', 'ASSISTENTE'].includes(perfil ?? '')
@@ -270,7 +270,7 @@ export default function ImoveisPage() {
           <p className="text-escuro-200 text-lg">Nenhum imóvel encontrado</p>
           {podeEscrever && (
             <Link href="/imoveis/novo" className="btn-primary inline-flex items-center gap-2 text-sm mt-4">
-              Cadastrar primeiro imóvel
+              Cadastrar Novo Imóvel
             </Link>
           )}
         </div>

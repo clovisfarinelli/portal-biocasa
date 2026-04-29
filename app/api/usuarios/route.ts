@@ -11,6 +11,8 @@ const schemaCriarUsuario = z.object({
   senha: z.string().min(8),
   perfil: z.enum(['MASTER', 'PROPRIETARIO', 'ESPECIALISTA', 'ASSISTENTE', 'CORRETOR']),
   unidadeId: z.string().optional(),
+  acessoImob: z.boolean().optional(),
+  acessoIncorp: z.boolean().optional(),
 })
 
 export async function GET(req: NextRequest) {
@@ -100,6 +102,8 @@ export async function POST(req: NextRequest) {
       senhaHash,
       perfil: dados.perfil as any,
       unidadeId: dados.unidadeId ?? null,
+      acessoImob: dados.acessoImob ?? false,
+      acessoIncorp: dados.acessoIncorp ?? false,
     },
     include: { unidade: true },
   })
