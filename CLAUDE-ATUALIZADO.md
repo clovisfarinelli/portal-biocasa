@@ -1,5 +1,5 @@
 # Portal Biocasa — Guia de Arquitetura para Claude Code
-*Atualizado: Abril 2026 (Sessão: Módulo de Imóveis — Schema + API)*
+*Atualizado: Abril 2026 (Sessão 2: Módulo de Imóveis — Interface completa)*
 
 Este arquivo documenta a arquitetura completa, decisões técnicas e convenções do projeto.
 
@@ -87,11 +87,16 @@ portal-biocasa/
 │   │   ├── unidades/
 │   │   ├── usuarios/
 │   │   └── imoveis/                # ← NOVO
-│   │       ├── route.ts            # GET (lista + n8n) + POST
+│   │       ├── route.ts            # GET (lista + n8n + busca texto) + POST
 │   │       └── [id]/
-│   │           ├── route.ts        # GET + PUT + DELETE
+│   │           ├── route.ts        # GET + PUT (incl. fotos) + DELETE
 │   │           └── fotos/
 │   │               └── route.ts    # POST (upload+compress) + DELETE
+├── app/(dashboard)/
+│   ├── imoveis/page.tsx            # Listagem com filtros + cards + paginação
+│   ├── imoveis/novo/page.tsx       # Formulário novo imóvel
+│   ├── imoveis/[id]/page.tsx       # Visualização completa (server component)
+│   └── imoveis/[id]/editar/        # Formulário edição + galeria de fotos
 ├── components/
 │   ├── ChatInterface.tsx
 │   ├── ExportarPDF.tsx
@@ -100,7 +105,11 @@ portal-biocasa/
 │   ├── Sidebar.tsx
 │   ├── TreinarIA.tsx
 │   ├── UploadArquivos.tsx
-│   └── UserManagement.tsx
+│   ├── UserManagement.tsx
+│   └── imoveis/                        # ← NOVO
+│       ├── ImovelForm.tsx              # Formulário completo (5 seções, client)
+│       ├── GaleriaFotos.tsx            # Upload/reordenação com react-dropzone
+│       └── CopiarFichaButton.tsx       # Botão copiar ficha WhatsApp (client)
 ├── lib/
 │   ├── auth.ts
 │   ├── gemini.ts
@@ -287,7 +296,7 @@ export \$(grep -v '^#' .env.local | xargs) && npx prisma db push
 | 6 | Responsivo mobile completo | Média |
 | 7 | Paginação no histórico da Sidebar | Baixa |
 | 8 | Notificação email quando limite atingido | Baixa |
-| 9 | **Frontend do módulo de imóveis** (Sessão 2) | Alta |
+| 9 | ~~Frontend do módulo de imóveis~~ ✅ Concluído | — |
 | 10 | Adicionar API_KEY_N8N no painel Vercel (env de produção) | Alta |
 
 ## Usuário inicial (seed)

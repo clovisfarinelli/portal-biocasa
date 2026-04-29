@@ -37,8 +37,11 @@ export default function Sidebar({ session }: { session: Session }) {
   const [consumo, setConsumo] = useState<ConsumoMes>({ totalAnalises: 0, totalTokens: 0, totalCusto: 0 })
   const [recolhido, setRecolhido] = useState(false)
 
+  const temIncorporacao = ['MASTER', 'PROPRIETARIO', 'ESPECIALISTA'].includes(perfil)
+  const temImoveis = ['MASTER', 'PROPRIETARIO', 'ASSISTENTE', 'CORRETOR'].includes(perfil)
+
   useEffect(() => {
-    carregarHistorico()
+    if (temIncorporacao) carregarHistorico()
   }, [pathname])
 
   async function carregarHistorico() {
@@ -89,23 +92,38 @@ export default function Sidebar({ session }: { session: Session }) {
         </button>
       </div>
 
-      {/* Nova Análise */}
-      <div className="px-3 py-3">
-        <button
-          onClick={novaAnalise}
-          className="btn-primary w-full flex items-center justify-center gap-2 py-2.5"
-          title="Nova Análise"
-        >
-          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          {!recolhido && <span>Nova Análise</span>}
-        </button>
-      </div>
+      {/* Nova Análise — apenas módulo incorporação */}
+      {temIncorporacao && (
+        <div className="px-3 py-3">
+          <button
+            onClick={novaAnalise}
+            className="btn-primary w-full flex items-center justify-center gap-2 py-2.5"
+            title="Nova Análise"
+          >
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            {!recolhido && <span>Nova Análise</span>}
+          </button>
+        </div>
+      )}
 
       {/* Nav items */}
       <nav className="px-3 space-y-1">
-        {perfil !== 'ESPECIALISTA' && (
+        {temImoveis && (
+          <Link
+            href="/imoveis"
+            className={pathname.startsWith('/imoveis') ? 'sidebar-item-active' : 'sidebar-item'}
+            title="Imóveis"
+          >
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            {!recolhido && <span>Imóveis</span>}
+          </Link>
+        )}
+
+        {['MASTER', 'PROPRIETARIO'].includes(perfil) && (
           <Link href="/usuarios" className={pathname === '/usuarios' ? 'sidebar-item-active' : 'sidebar-item'} title="Usuários">
             <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -133,8 +151,8 @@ export default function Sidebar({ session }: { session: Session }) {
         )}
       </nav>
 
-      {/* Histórico */}
-      {!recolhido && (
+      {/* Histórico — apenas módulo incorporação */}
+      {temIncorporacao && !recolhido && (
         <div className="flex-1 overflow-y-auto px-3 py-4">
           <p className="text-xs font-semibold text-escuro-300 uppercase tracking-wider mb-2 px-1">Histórico</p>
           {historico.length === 0 ? (
@@ -182,8 +200,11 @@ export default function Sidebar({ session }: { session: Session }) {
         </div>
       )}
 
-      {/* Consumo do mês */}
-      {!recolhido && (
+      {/* Spacer para perfis sem histórico */}
+      {!temIncorporacao && <div className="flex-1" />}
+
+      {/* Consumo do mês — apenas módulo incorporação */}
+      {temIncorporacao && !recolhido && (
         <div className="border-t border-escuro-500 px-4 py-3">
           <p className="text-xs font-semibold text-escuro-300 uppercase tracking-wider mb-2">Consumo do mês</p>
           <div className="space-y-1">

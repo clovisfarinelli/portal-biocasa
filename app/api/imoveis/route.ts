@@ -41,6 +41,7 @@ const schemaFiltros = z.object({
   publicar_site: z.string().optional(),
   unidadeId: z.string().optional(),
   pagina: z.string().optional(),
+  busca: z.string().optional(),
 })
 
 export async function GET(req: NextRequest) {
@@ -81,21 +82,37 @@ export async function GET(req: NextRequest) {
     where.unidadeId = filtros.unidadeId
   }
 
+  if (filtros.busca) {
+    const b = filtros.busca
+    const andBusca = {
+      OR: [
+        { codigoRef: { contains: b, mode: 'insensitive' as const } },
+        { nome: { contains: b, mode: 'insensitive' as const } },
+        { bairro: { contains: b, mode: 'insensitive' as const } },
+        { proprietario: { contains: b, mode: 'insensitive' as const } },
+      ],
+    }
+    where.AND = [andBusca]
+  }
+
   if (filtros.valor_min || filtros.valor_max) {
-    where.OR = [
-      {
-        valorVenda: {
-          ...(filtros.valor_min ? { gte: parseFloat(filtros.valor_min) } : {}),
-          ...(filtros.valor_max ? { lte: parseFloat(filtros.valor_max) } : {}),
+    const condicaoValor = {
+      OR: [
+        {
+          valorVenda: {
+            ...(filtros.valor_min ? { gte: parseFloat(filtros.valor_min) } : {}),
+            ...(filtros.valor_max ? { lte: parseFloat(filtros.valor_max) } : {}),
+          },
         },
-      },
-      {
-        valorLocacao: {
-          ...(filtros.valor_min ? { gte: parseFloat(filtros.valor_min) } : {}),
-          ...(filtros.valor_max ? { lte: parseFloat(filtros.valor_max) } : {}),
+        {
+          valorLocacao: {
+            ...(filtros.valor_min ? { gte: parseFloat(filtros.valor_min) } : {}),
+            ...(filtros.valor_max ? { lte: parseFloat(filtros.valor_max) } : {}),
+          },
         },
-      },
-    ]
+      ],
+    }
+    where.AND = [...(where.AND ?? []), condicaoValor]
   }
 
   const [imoveis, total] = await Promise.all([
