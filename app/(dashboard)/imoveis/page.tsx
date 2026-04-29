@@ -84,15 +84,16 @@ export default function ImoveisPage() {
   // Filtros
   const [busca, setBusca] = useState('')
   const [modalidade, setModalidade] = useState('')
-  const [situacao, setSituacao] = useState('')
   const [cidade, setCidade] = useState('')
   const [bairro, setBairro] = useState('')
   const [tipo, setTipo] = useState('')
   const [dormitorios, setDormitorios] = useState('')
+  const [faixaValor, setFaixaValor] = useState('')
+  const [ordenar, setOrdenar] = useState('')
 
   // Filtros aplicados (só buscam ao clicar Filtrar)
   const [filtrosAtivos, setFiltrosAtivos] = useState({
-    busca: '', modalidade: '', situacao: '', cidade: '', bairro: '', tipo: '', dormitorios: '',
+    busca: '', modalidade: '', cidade: '', bairro: '', tipo: '', dormitorios: '', faixaValor: '', ordenar: '',
   })
 
   const podeEscrever = ['MASTER', 'PROPRIETARIO', 'ASSISTENTE'].includes(perfil ?? '')
@@ -106,10 +107,21 @@ export default function ImoveisPage() {
     if (filtros.busca) params.set('busca', filtros.busca)
     if (filtros.tipo) params.set('tipo', filtros.tipo)
     if (filtros.modalidade) params.set('modalidade', filtros.modalidade)
-    if (filtros.situacao) params.set('situacao', filtros.situacao)
     if (filtros.cidade) params.set('cidade', filtros.cidade)
     if (filtros.bairro) params.set('bairro', filtros.bairro)
     if (filtros.dormitorios) params.set('dormitorios', filtros.dormitorios)
+    if (filtros.faixaValor) {
+      const faixas: Record<string, { min?: number; max?: number }> = {
+        ate300: { max: 300000 },
+        '300a500': { min: 300000, max: 500000 },
+        '500a700': { min: 500000, max: 700000 },
+        acima700: { min: 700000 },
+      }
+      const faixa = faixas[filtros.faixaValor]
+      if (faixa?.min) params.set('valor_min', String(faixa.min))
+      if (faixa?.max) params.set('valor_max', String(faixa.max))
+    }
+    if (filtros.ordenar) params.set('ordenar', filtros.ordenar)
 
     try {
       const res = await fetch(`/api/imoveis?${params}`)
@@ -129,13 +141,13 @@ export default function ImoveisPage() {
 
   function aplicarFiltros() {
     setPagina(1)
-    setFiltrosAtivos({ busca, modalidade, situacao, cidade, bairro, tipo, dormitorios })
+    setFiltrosAtivos({ busca, modalidade, cidade, bairro, tipo, dormitorios, faixaValor, ordenar })
   }
 
   function limparFiltros() {
-    setBusca(''); setModalidade(''); setSituacao(''); setCidade(''); setBairro(''); setTipo(''); setDormitorios('')
+    setBusca(''); setModalidade(''); setCidade(''); setBairro(''); setTipo(''); setDormitorios(''); setFaixaValor(''); setOrdenar('')
     setPagina(1)
-    setFiltrosAtivos({ busca: '', modalidade: '', situacao: '', cidade: '', bairro: '', tipo: '', dormitorios: '' })
+    setFiltrosAtivos({ busca: '', modalidade: '', cidade: '', bairro: '', tipo: '', dormitorios: '', faixaValor: '', ordenar: '' })
   }
 
   async function excluir(id: string, codigo: string) {
@@ -191,6 +203,21 @@ export default function ImoveisPage() {
             <option value="CASA_COMERCIAL">Casa Comercial</option>
             <option value="GALPAO">Galpão</option>
           </select>
+          <select value={dormitorios} onChange={e => setDormitorios(e.target.value)} className="input-field text-sm w-36">
+            <option value="">Dormitórios</option>
+            <option value="KIT_STUDIO">Kitnet/Studio</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4_MAIS">4+</option>
+          </select>
+          <select value={faixaValor} onChange={e => setFaixaValor(e.target.value)} className="input-field text-sm w-52">
+            <option value="">Faixa de Valor</option>
+            <option value="ate300">Até R$ 300 mil</option>
+            <option value="300a500">R$ 300 mil a R$ 500 mil</option>
+            <option value="500a700">R$ 500 mil a R$ 700 mil</option>
+            <option value="acima700">Acima de R$ 700 mil</option>
+          </select>
           <input
             value={cidade}
             onChange={e => setCidade(e.target.value)}
@@ -203,20 +230,6 @@ export default function ImoveisPage() {
             placeholder="Bairro"
             className="input-field text-sm w-36"
           />
-          <select value={dormitorios} onChange={e => setDormitorios(e.target.value)} className="input-field text-sm w-40">
-            <option value="">Dormitórios</option>
-            <option value="KIT_STUDIO">Kitnet/Studio</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4_MAIS">4+</option>
-          </select>
-          <select value={situacao} onChange={e => setSituacao(e.target.value)} className="input-field text-sm w-36">
-            <option value="">Situação</option>
-            <option value="DISPONIVEL">Disponível</option>
-            <option value="VENDIDO">Vendido</option>
-            <option value="ALUGADO">Alugado</option>
-          </select>
         </div>
         {/* Linha 2 */}
         <div className="flex gap-3">
@@ -227,6 +240,11 @@ export default function ImoveisPage() {
             placeholder="Buscar por ref, nome, endereço..."
             className="input-field text-sm flex-1"
           />
+          <select value={ordenar} onChange={e => setOrdenar(e.target.value)} className="input-field text-sm w-40">
+            <option value="">Mais Recente</option>
+            <option value="maior_valor">Maior Valor</option>
+            <option value="menor_valor">Menor Valor</option>
+          </select>
           <button onClick={aplicarFiltros} className="btn-primary text-sm px-5">
             Filtrar
           </button>

@@ -1,5 +1,5 @@
 # Portal Biocasa — Guia de Arquitetura para Claude Code
-*Atualizado: Abril 2026 (Sessão 5b: Imóveis — Interface, Filtros, Galeria e Download)*
+*Atualizado: Abril 2026 (Sessão 6: Imóveis — Filtros avançados, Faixa de Valor, Ordenação)*
 
 Este arquivo documenta a arquitetura completa, decisões técnicas e convenções do projeto.
 
@@ -166,7 +166,8 @@ portal-biocasa/
 ## API Endpoints — Módulo de Imóveis
 
 ### GET /api/imoveis
-- Lista imóveis com filtros: `modalidade`, `tipo`, `cidade`, `bairro`, `dormitorios`, `situacao`, `valor_min`, `valor_max`, `destaque`, `publicar_site`, `busca` (texto livre), `unidadeId` (MASTER only), `pagina`
+- Lista imóveis com filtros: `modalidade`, `tipo`, `cidade`, `bairro`, `dormitorios`, `situacao`, `valor_min`, `valor_max`, `destaque`, `publicar_site`, `busca` (texto livre), `unidadeId` (MASTER only), `pagina`, `ordenar`
+- `ordenar`: `mais_recente` (padrão, dataCadastro DESC) | `maior_valor` | `menor_valor` — nulls sempre por último
 - Auth dupla: session NextAuth **ou** header `x-api-key: <API_KEY_N8N>` (para n8n)
 - MASTER vê todos; demais perfis veem apenas sua unidade
 
@@ -292,9 +293,11 @@ export \$(grep -v '^#' .env.local | xargs) && npx prisma db push
 ## Módulo de Imóveis — Interface e Componentes
 
 ### Listagem `/imoveis` — Filtros e Cards
-- **Linha 1 de filtros:** Modalidade (w-36) | Tipo (w-44) | Cidade (w-36) | Bairro (w-36) | Dormitórios (w-40) | Situação (w-36)
-- **Linha 2 de filtros:** Busca livre (flex-1) | Filtrar | Limpar
-- **Card:** badge (tipo) no footer; valor em destaque; linha cond/IPTU; linha características (dorms/suítes/vagas/m²)
+- **Linha 1 de filtros:** Modalidade (w-36) | Tipo (w-44) | Dormitórios (w-36) | Faixa de Valor (w-52) | Cidade (w-36) | Bairro (w-36)
+- **Linha 2 de filtros:** Busca livre (flex-1) | Ordenar por (w-40) | Filtrar | Limpar
+- **Faixa de Valor** → traduz para `valor_min`/`valor_max`: Até R$ 300k | R$ 300k–R$ 500k | R$ 500k–R$ 700k | Acima R$ 700k
+- **Ordenar por** → envia `ordenar`: Mais Recente (padrão) | Maior Valor | Menor Valor
+- **Card:** badge (situação) no footer; valor em destaque; linha cond/IPTU; linha características (dorms/suítes/vagas/m²)
 
 ### Formulário `ImovelForm.tsx` — 5 Seções
 1. Identificação e Classificação — codigoRef, tipo, finalidade, modalidade, situacao, destaque, publicarSite, parceria
@@ -324,9 +327,9 @@ export \$(grep -v '^#' .env.local | xargs) && npx prisma db push
 - Conteúdo: `<GaleriaFotos>` com overflow-y-auto
 
 ### Página de Detalhes `/imoveis/[id]` — 4 Seções
-1. **Dados Comerciais:** valores, características (dorms/suítes/banheiros/garagem/áreas)
-2. **Endereço e Imóvel:** endereço completo, situação do imóvel, vista mar, facilidades, descrição
-3. **Captação e Administrativo:** proprietário, comissão, publicações, links, observações internas
+1. **Dados Comerciais:** código, nome, tipo, modalidade, valores (venda/locação), áreas, dorms, suítes, banheiros, garagem, permuta/financ
+2. **Dados do Imóvel:** endereço completo, situação, vista mar, condomínio/IPTU (valores mensais), facilidades, descrição
+3. **Dados Administrativos:** proprietário, captador, exclusividade, comissão, publicações, links, obs internas
 4. **Fotos:** `<GaleriaFotos readOnly>` — sempre por último
 
 ### ViaCEP — Auto-fill de CEP

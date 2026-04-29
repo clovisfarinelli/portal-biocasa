@@ -166,7 +166,7 @@ export default async function VisualizarImovelPage({ params }: { params: { id: s
         </div>
       </div>
 
-      {/* Seção 1 — Dados Comerciais + Características */}
+      {/* Seção 1 — Dados Comerciais */}
       <div className="card mb-4">
         <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Dados Comerciais</h3>
         <Linha label="Código Ref." valor={imovel.codigoRef} />
@@ -176,8 +176,6 @@ export default async function VisualizarImovelPage({ params }: { params: { id: s
         <Linha label="Modalidade" valor={imovel.modalidade === 'VENDA' ? 'Venda' : imovel.modalidade === 'LOCACAO' ? 'Locação' : 'Venda + Locação'} />
         {mostrarVenda && <Linha label="Valor Venda" valor={imovel.valorVenda ? formatarMoeda(imovel.valorVenda) : null} />}
         {mostrarLocacao && <Linha label="Valor Locação" valor={imovel.valorLocacao ? `${formatarMoeda(imovel.valorLocacao)}/mês` : null} />}
-        <Linha label="Condomínio" valor={imovel.valorCondominio ? `${formatarMoeda(imovel.valorCondominio)}/mês` : null} />
-        <Linha label="IPTU Mensal" valor={imovel.valorIptu ? formatarMoeda(imovel.valorIptu) : null} />
         <Linha label="Área Útil" valor={imovel.areaUtil ? `${imovel.areaUtil} m²` : null} />
         <Linha label="Área Total" valor={imovel.areaTotal ? `${imovel.areaTotal} m²` : null} />
         <Linha label="Dormitórios" valor={imovel.dormitorios ? (LABEL_DORMITORIOS[imovel.dormitorios] ?? imovel.dormitorios) : null} />
@@ -189,9 +187,9 @@ export default async function VisualizarImovelPage({ params }: { params: { id: s
         <Linha label="Documentação OK" valor={imovel.documentacaoOk || undefined} />
       </div>
 
-      {/* Seção 2 — Endereço e Dados do Imóvel */}
+      {/* Seção 2 — Dados do Imóvel */}
       <div className="card mb-4">
-        <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Endereço e Imóvel</h3>
+        <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Dados do Imóvel</h3>
         <Linha label="Logradouro" valor={[imovel.logradouro, imovel.numero, imovel.complemento].filter(Boolean).join(', ')} />
         <Linha label="Bairro" valor={imovel.bairro} />
         <Linha label="Cidade / Estado" valor={`${imovel.cidade} - ${imovel.estado}`} />
@@ -202,6 +200,8 @@ export default async function VisualizarImovelPage({ params }: { params: { id: s
         <Linha label="Situação Imóvel" valor={imovel.situacaoImovel} />
         <Linha label="Dependência" valor={imovel.dependencia || undefined} />
         <Linha label="Vista Mar" valor={imovel.vistaMar ? `Sim${imovel.tipoVistaMar ? ` · ${imovel.tipoVistaMar === 'FRENTE' ? 'Frente' : 'Lateral'}` : ''}` : null} />
+        <Linha label="Condomínio" valor={imovel.valorCondominio ? `${formatarMoeda(imovel.valorCondominio)}/mês` : null} />
+        <Linha label="IPTU Mensal" valor={imovel.valorIptu ? formatarMoeda(imovel.valorIptu) : null} />
         {facilImovel.length > 0 && (
           <Linha label="Facilidades" valor={facilImovel.map(f => labelFacilImovel[f] ?? f).join(', ')} />
         )}
@@ -216,9 +216,9 @@ export default async function VisualizarImovelPage({ params }: { params: { id: s
         )}
       </div>
 
-      {/* Seção 3 — Captação e Administrativo */}
+      {/* Seção 3 — Dados Administrativos */}
       <div className="card mb-4">
-        <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Captação e Administrativo</h3>
+        <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Dados Administrativos</h3>
         <Linha label="Proprietário" valor={imovel.proprietario} />
         <Linha label="Contato" valor={imovel.telProprietario} />
         <Linha label="Captador" valor={imovel.captador} />

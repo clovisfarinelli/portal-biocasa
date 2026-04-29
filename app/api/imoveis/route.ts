@@ -44,6 +44,7 @@ const schemaFiltros = z.object({
   unidadeId: z.string().optional(),
   pagina: z.string().optional(),
   busca: z.string().optional(),
+  ordenar: z.string().optional(),
 })
 
 export async function GET(req: NextRequest) {
@@ -119,10 +120,23 @@ export async function GET(req: NextRequest) {
     where.AND = [...(where.AND ?? []), condicaoValor]
   }
 
+  let orderBy: any = { dataCadastro: 'desc' }
+  if (filtros.ordenar === 'maior_valor') {
+    orderBy = [
+      { valorVenda: { sort: 'desc', nulls: 'last' } },
+      { valorLocacao: { sort: 'desc', nulls: 'last' } },
+    ]
+  } else if (filtros.ordenar === 'menor_valor') {
+    orderBy = [
+      { valorVenda: { sort: 'asc', nulls: 'last' } },
+      { valorLocacao: { sort: 'asc', nulls: 'last' } },
+    ]
+  }
+
   const [imoveis, total] = await Promise.all([
     prisma.imovel.findMany({
       where,
-      orderBy: { dataCadastro: 'desc' },
+      orderBy,
       skip,
       take: porPagina,
       include: { unidade: { select: { nome: true } } },
