@@ -296,6 +296,7 @@ interface Props {
   imovelId?: string
   imovelInicial?: ImovelCompleto
   perfil: string
+  voltarUrl?: string
 }
 
 // ─── Helpers de UI ────────────────────────────────────────────────────────────
@@ -379,7 +380,7 @@ function CampoMonetario({ value, onChange, placeholder }: {
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
-export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
+export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl }: Props) {
   const router = useRouter()
   const modoEdicao = !!imovelId
 
@@ -625,7 +626,7 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
         setMensagem({ tipo: 'erro', texto: data.erro ?? 'Erro ao excluir' })
         return
       }
-      router.push('/imoveis')
+      router.push(voltarUrl ?? '/imoveis')
     } catch {
       setMensagem({ tipo: 'erro', texto: 'Erro de conexão ao excluir.' })
     } finally {
@@ -654,7 +655,7 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
             </p>
           )}
         </div>
-        <button onClick={() => router.push('/imoveis')} className="btn-secondary flex items-center gap-2 text-sm">
+        <button onClick={() => router.push(voltarUrl ?? '/imoveis')} className="btn-secondary flex items-center gap-2 text-sm">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
@@ -1202,7 +1203,7 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
           )}
         </div>
         <div className="flex gap-3">
-          <button onClick={() => router.push('/imoveis')} className="btn-secondary text-sm">
+          <button onClick={() => router.push(voltarUrl ?? '/imoveis')} className="btn-secondary text-sm">
             Cancelar
           </button>
           <button

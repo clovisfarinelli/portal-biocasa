@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { formatarMoeda } from '@/lib/utils'
 
 interface Imovel {
@@ -71,35 +71,57 @@ function BadgeSituacao({ situacao }: { situacao: string }) {
   )
 }
 
-export default function ImoveisPage() {
+function ImoveisContent() {
   const { data: session } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const perfil = (session?.user as any)?.perfil as string | undefined
 
   const [imoveis, setImoveis] = useState<Imovel[]>([])
   const [total, setTotal] = useState(0)
-  const [pagina, setPagina] = useState(1)
+  const [pagina, setPagina] = useState(() => Math.max(1, Number(searchParams.get('pagina') ?? '1')))
   const [carregando, setCarregando] = useState(true)
   const [excluindoId, setExcluindoId] = useState<string | null>(null)
 
-  // Filtros
-  const [busca, setBusca] = useState('')
-  const [modalidade, setModalidade] = useState('VENDA')
-  const [cidade, setCidade] = useState('')
-  const [bairro, setBairro] = useState('')
-  const [tipo, setTipo] = useState('APARTAMENTO')
-  const [dormitorios, setDormitorios] = useState('')
-  const [faixaValor, setFaixaValor] = useState('')
-  const [ordenar, setOrdenar] = useState('')
+  // Filtros — inicializados da URL para preservar estado ao voltar
+  const [busca, setBusca] = useState(() => searchParams.get('busca') ?? '')
+  const [modalidade, setModalidade] = useState(() => searchParams.get('modalidade') ?? 'VENDA')
+  const [cidade, setCidade] = useState(() => searchParams.get('cidade') ?? '')
+  const [bairro, setBairro] = useState(() => searchParams.get('bairro') ?? '')
+  const [tipo, setTipo] = useState(() => searchParams.get('tipo') ?? 'APARTAMENTO')
+  const [dormitorios, setDormitorios] = useState(() => searchParams.get('dormitorios') ?? '')
+  const [faixaValor, setFaixaValor] = useState(() => searchParams.get('faixaValor') ?? '')
+  const [ordenar, setOrdenar] = useState(() => searchParams.get('ordenar') ?? '')
 
   // Filtros aplicados (só buscam ao clicar Filtrar)
-  const [filtrosAtivos, setFiltrosAtivos] = useState({
-    busca: '', modalidade: 'VENDA', cidade: '', bairro: '', tipo: 'APARTAMENTO', dormitorios: '', faixaValor: '', ordenar: '',
-  })
+  const [filtrosAtivos, setFiltrosAtivos] = useState(() => ({
+    busca: searchParams.get('busca') ?? '',
+    modalidade: searchParams.get('modalidade') ?? 'VENDA',
+    cidade: searchParams.get('cidade') ?? '',
+    bairro: searchParams.get('bairro') ?? '',
+    tipo: searchParams.get('tipo') ?? 'APARTAMENTO',
+    dormitorios: searchParams.get('dormitorios') ?? '',
+    faixaValor: searchParams.get('faixaValor') ?? '',
+    ordenar: searchParams.get('ordenar') ?? '',
+  }))
 
   const podeEscrever = ['MASTER', 'PROPRIETARIO', 'ASSISTENTE'].includes(perfil ?? '')
   const podeExcluir = perfil === 'MASTER'
   const totalPaginas = Math.ceil(total / 20)
+
+  function buildFiltroParams(filtros: typeof filtrosAtivos, pg: number): string {
+    const p = new URLSearchParams()
+    if (filtros.busca) p.set('busca', filtros.busca)
+    if (filtros.modalidade) p.set('modalidade', filtros.modalidade)
+    if (filtros.tipo) p.set('tipo', filtros.tipo)
+    if (filtros.cidade) p.set('cidade', filtros.cidade)
+    if (filtros.bairro) p.set('bairro', filtros.bairro)
+    if (filtros.dormitorios) p.set('dormitorios', filtros.dormitorios)
+    if (filtros.faixaValor) p.set('faixaValor', filtros.faixaValor)
+    if (filtros.ordenar) p.set('ordenar', filtros.ordenar)
+    if (pg > 1) p.set('pagina', String(pg))
+    return p.toString()
+  }
 
   const buscarImoveis = useCallback(async (filtros: typeof filtrosAtivos, pg: number) => {
     setCarregando(true)
@@ -141,14 +163,25 @@ export default function ImoveisPage() {
   }, [filtrosAtivos, pagina])
 
   function aplicarFiltros() {
+    const novosFiltros = { busca, modalidade, cidade, bairro, tipo, dormitorios, faixaValor, ordenar }
     setPagina(1)
-    setFiltrosAtivos({ busca, modalidade, cidade, bairro, tipo, dormitorios, faixaValor, ordenar })
+    setFiltrosAtivos(novosFiltros)
+    const qs = buildFiltroParams(novosFiltros, 1)
+    router.replace(`/imoveis${qs ? '?' + qs : ''}`, { scroll: false })
   }
 
   function limparFiltros() {
+    const vazio = { busca: '', modalidade: '', cidade: '', bairro: '', tipo: '', dormitorios: '', faixaValor: '', ordenar: '' }
     setBusca(''); setModalidade(''); setCidade(''); setBairro(''); setTipo(''); setDormitorios(''); setFaixaValor(''); setOrdenar('')
     setPagina(1)
-    setFiltrosAtivos({ busca: '', modalidade: '', cidade: '', bairro: '', tipo: '', dormitorios: '', faixaValor: '', ordenar: '' })
+    setFiltrosAtivos(vazio)
+    router.replace('/imoveis', { scroll: false })
+  }
+
+  function mudarPagina(novaPagina: number) {
+    setPagina(novaPagina)
+    const qs = buildFiltroParams(filtrosAtivos, novaPagina)
+    router.replace(`/imoveis${qs ? '?' + qs : ''}`, { scroll: false })
   }
 
   async function excluir(id: string, codigo: string) {
@@ -164,6 +197,11 @@ export default function ImoveisPage() {
       setExcluindoId(null)
     }
   }
+
+  const voltarQs = buildFiltroParams(filtrosAtivos, pagina)
+  const voltarBase = `/imoveis${voltarQs ? '?' + voltarQs : ''}`
+  const comVoltar = (href: string) =>
+    voltarQs ? `${href}?voltar=${encodeURIComponent(voltarBase)}` : href
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -404,14 +442,14 @@ export default function ImoveisPage() {
                       <BadgeSituacao situacao={imovel.situacao} />
                       <div className="flex gap-1.5">
                         <Link
-                          href={`/imoveis/${imovel.id}`}
+                          href={comVoltar(`/imoveis/${imovel.id}`)}
                           className="py-1 px-2.5 rounded-lg bg-escuro-700 hover:bg-escuro-600 border border-escuro-400 text-xs text-escuro-100 hover:text-white transition-colors"
                         >
                           Ver
                         </Link>
                         {podeEscrever && (
                           <Link
-                            href={`/imoveis/${imovel.id}/editar`}
+                            href={comVoltar(`/imoveis/${imovel.id}/editar`)}
                             className="py-1 px-2.5 rounded-lg bg-dourado-400/10 hover:bg-dourado-400/20 border border-dourado-400/40 text-xs text-dourado-400 transition-colors"
                           >
                             Editar
@@ -441,7 +479,7 @@ export default function ImoveisPage() {
           {totalPaginas > 1 && (
             <div className="flex items-center justify-center gap-3">
               <button
-                onClick={() => setPagina(p => Math.max(1, p - 1))}
+                onClick={() => mudarPagina(Math.max(1, pagina - 1))}
                 disabled={pagina === 1}
                 className="btn-secondary text-sm px-4 disabled:opacity-40"
               >
@@ -451,7 +489,7 @@ export default function ImoveisPage() {
                 Página {pagina} de {totalPaginas}
               </span>
               <button
-                onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+                onClick={() => mudarPagina(Math.min(totalPaginas, pagina + 1))}
                 disabled={pagina === totalPaginas}
                 className="btn-secondary text-sm px-4 disabled:opacity-40"
               >
@@ -462,5 +500,13 @@ export default function ImoveisPage() {
         </>
       )}
     </div>
+  )
+}
+
+export default function ImoveisPage() {
+  return (
+    <Suspense>
+      <ImoveisContent />
+    </Suspense>
   )
 }

@@ -56,7 +56,13 @@ function BadgeSituacao({ situacao }: { situacao: string }) {
   )
 }
 
-export default async function VisualizarImovelPage({ params }: { params: { id: string } }) {
+export default async function VisualizarImovelPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string }
+  searchParams: { voltar?: string }
+}) {
   const session = await getServerSession(authOptions)
   const usuario = session?.user as any
   const perfil = usuario?.perfil as string
@@ -78,6 +84,9 @@ export default async function VisualizarImovelPage({ params }: { params: { id: s
   }
 
   const podeEditar = ['MASTER', 'PROPRIETARIO', 'ASSISTENTE'].includes(perfil)
+  const voltarUrl = (searchParams.voltar && searchParams.voltar.startsWith('/imoveis'))
+    ? searchParams.voltar
+    : '/imoveis'
 
   const fotos: { url: string; ordem: number; principal: boolean }[] = imovel.fotos
     ? (() => { try { return JSON.parse(imovel.fotos) } catch { return [] } })()
@@ -126,7 +135,7 @@ export default async function VisualizarImovelPage({ params }: { params: { id: s
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/imoveis" className="btn-secondary flex items-center gap-2 text-sm">
+          <Link href={voltarUrl} className="btn-secondary flex items-center gap-2 text-sm">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
@@ -144,7 +153,7 @@ export default async function VisualizarImovelPage({ params }: { params: { id: s
         <div className="flex items-center gap-3">
           <BadgeSituacao situacao={imovel.situacao} />
           {podeEditar && (
-            <Link href={`/imoveis/${imovel.id}/editar`} className="btn-primary flex items-center gap-2 text-sm">
+            <Link href={`/imoveis/${imovel.id}/editar?voltar=${encodeURIComponent(voltarUrl)}`} className="btn-primary flex items-center gap-2 text-sm">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
