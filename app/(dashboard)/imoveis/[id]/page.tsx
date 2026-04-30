@@ -15,7 +15,8 @@ const LABEL_TIPO: Record<string, string> = {
 const LABEL_SUBTIPO: Record<string, string> = {
   ISOLADA: 'Isolada', SOBRADO: 'Sobrado', SOBREPOSTA_ALTA: 'Sobreposta Alta',
   SOBREPOSTA_BAIXA: 'Sobreposta Baixa', VILLAGGIO: 'Villaggio',
-  KITNET: 'Kitnet', STUDIO: 'Studio', PADRAO: 'Padrão',
+  KITNET_STUDIO: 'Kitnet/Studio', KITNET: 'Kitnet/Studio', STUDIO: 'Kitnet/Studio',
+  PADRAO: 'Padrão', TERREO: 'Térreo',
 }
 const LABEL_DORMITORIOS: Record<string, string> = {
   KIT_STUDIO: 'Kit/Studio', '1': '1', '2': '2', '3': '3', '4_MAIS': '4+',
@@ -206,7 +207,7 @@ export default async function VisualizarImovelPage({
         <Linha label="CEP" valor={imovel.cep} />
         <Linha label="Edifício" valor={imovel.edificio} />
         <Linha label="Andar" valor={imovel.andar} />
-        <Linha label="Acesso" valor={imovel.acesso === 'ESCADAS' ? 'Escadas' : imovel.acesso === 'ELEVADOR' ? 'Elevador' : imovel.acesso} />
+        <Linha label="Acesso" valor={imovel.acesso === 'TERREO' ? 'Térreo' : imovel.acesso === 'ESCADAS' ? 'Escadas' : imovel.acesso === 'ELEVADOR' ? 'Elevador' : imovel.acesso} />
         <Linha label="Situação Imóvel" valor={imovel.situacaoImovel} />
         <Linha label="Dependência" valor={imovel.dependencia || undefined} />
         <Linha label="Vista Mar" valor={imovel.vistaMar ? `Sim${imovel.tipoVistaMar ? ` · ${imovel.tipoVistaMar === 'FRENTE' ? 'Frente' : 'Lateral'}` : ''}` : null} />

@@ -31,9 +31,9 @@ const SUBTIPOS: Record<string, { value: string; label: string }[]> = {
     { value: 'VILLAGGIO', label: 'Villaggio' },
   ],
   APARTAMENTO: [
-    { value: 'KITNET', label: 'Kitnet' },
-    { value: 'STUDIO', label: 'Studio' },
+    { value: 'KITNET_STUDIO', label: 'Kitnet/Studio' },
     { value: 'PADRAO', label: 'Padrão' },
+    { value: 'TERREO', label: 'Térreo' },
   ],
 }
 
@@ -1035,6 +1035,7 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
               <Label>Acesso</Label>
               <Select {...campo('acesso')}>
                 <option value="">— Selecione —</option>
+                <option value="TERREO">Térreo</option>
                 <option value="ESCADAS">Escadas</option>
                 <option value="ELEVADOR">Elevador</option>
               </Select>

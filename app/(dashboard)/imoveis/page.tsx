@@ -41,7 +41,8 @@ const LABEL_TIPO: Record<string, string> = {
 const LABEL_SUBTIPO: Record<string, string> = {
   ISOLADA: 'Isolada', SOBRADO: 'Sobrado', SOBREPOSTA_ALTA: 'Sobreposta Alta',
   SOBREPOSTA_BAIXA: 'Sobreposta Baixa', VILLAGGIO: 'Villaggio',
-  KITNET: 'Kitnet', STUDIO: 'Studio', PADRAO: 'Padrão',
+  KITNET_STUDIO: 'Kitnet/Studio', KITNET: 'Kitnet/Studio', STUDIO: 'Kitnet/Studio',
+  PADRAO: 'Padrão', TERREO: 'Térreo',
 }
 const LABEL_MODALIDADE: Record<string, string> = {
   VENDA: 'Venda', LOCACAO: 'Locação', AMBOS: 'Venda / Locação',
@@ -365,7 +366,7 @@ function ImoveisContent() {
               return (
                 <div key={imovel.id} className="card p-0 overflow-hidden flex flex-col hover:border-escuro-300 transition-colors">
                   {/* Foto */}
-                  <div className="relative aspect-[4/3] bg-escuro-700 flex-shrink-0">
+                  <div className="relative w-full h-48 bg-escuro-700 flex-shrink-0 overflow-hidden">
                     {foto ? (
                       <img src={`/api/imoveis/fotos/download?url=${encodeURIComponent(foto)}`} alt={imovel.codigoRef} className="w-full h-full object-cover" />
                     ) : (
