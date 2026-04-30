@@ -1,9 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
+const SITE_HOSTNAME = 'imoveis.cf8.com.br'
+
 export async function middleware(req: NextRequest) {
-  const token = await getToken({ req })
   const { pathname } = req.nextUrl
+  const hostname = req.headers.get('host') ?? ''
+
+  // ── Site público: roteamento por hostname ──────────────────────────────────
+  if (hostname === SITE_HOSTNAME || hostname.startsWith(`${SITE_HOSTNAME}:`)) {
+    const url = req.nextUrl.clone()
+    url.pathname = `/site${pathname === '/' ? '' : pathname}`
+    return NextResponse.rewrite(url)
+  }
+
+  // ── Rotas do site (acesso direto em dev/preview) — sem auth ───────────────
+  if (pathname.startsWith('/site')) {
+    return NextResponse.next()
+  }
+
+  // ── API pública de imóveis — sem auth ─────────────────────────────────────
+  if (pathname.startsWith('/api/imoveis/publico')) {
+    return NextResponse.next()
+  }
+
+  // ── Rotas protegidas ───────────────────────────────────────────────────────
+  const token = await getToken({ req })
 
   if (!token) {
     if (pathname.startsWith('/api/')) {
@@ -41,21 +63,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/chat/:path*',
-    '/usuarios/:path*',
-    '/treinar-ia/:path*',
-    '/analises-unidades/:path*',
-    '/imoveis/:path*',
-    '/acesso-negado',
-    '/api/analises/:path*',
-    '/api/imoveis/:path*',
-    '/api/usuarios/:path*',
-    '/api/documentos/:path*',
-    '/api/cidades/:path*',
-    '/api/arquivos/:path*',
-    '/api/configuracoes/:path*',
-    '/api/unidades/:path*',
-    '/api/logs-erro/:path*',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon\\.ico).*)'],
 }
