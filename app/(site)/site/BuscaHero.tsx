@@ -38,12 +38,8 @@ export default function BuscaHero() {
 
   return (
     <section
-      className="relative flex items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-16"
-      style={{
-        backgroundImage: 'url(/hero-bg.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
+      className="relative flex items-center justify-center min-h-[calc(100vh-4rem)] bg-cover bg-center px-4 py-16"
+      style={{ backgroundImage: "url('/hero-bg.png')" }}
     >
       {/* Overlay escuro */}
       <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.45)' }} />

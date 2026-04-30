@@ -8,8 +8,14 @@ export async function middleware(req: NextRequest) {
   const hostname = req.headers.get('host') ?? ''
 
   // ── Site público: roteamento por hostname ──────────────────────────────────
-  // Rotas /api/ nunca são reescritas — caem no fluxo normal de auth abaixo
-  if ((hostname === SITE_HOSTNAME || hostname.startsWith(`${SITE_HOSTNAME}:`)) && !pathname.startsWith('/api/')) {
+  // Rotas /api/ e arquivos estáticos nunca são reescritos
+  if (hostname === SITE_HOSTNAME || hostname.startsWith(`${SITE_HOSTNAME}:`)) {
+    if (
+      pathname.startsWith('/api/') ||
+      pathname.match(/\.(png|jpg|jpeg|svg|ico|webp|gif|css|js|woff|woff2|ttf|otf|map)$/)
+    ) {
+      return NextResponse.next()
+    }
     const url = req.nextUrl.clone()
     url.pathname = `/site${pathname === '/' ? '' : pathname}`
     return NextResponse.rewrite(url)
