@@ -8,12 +8,17 @@ export async function GET(req: NextRequest) {
 
   const tipo = searchParams.get('tipo') || undefined
   const modalidade = searchParams.get('modalidade') || undefined
+  const busca = searchParams.get('busca') || undefined
   const cidade = searchParams.get('cidade') || undefined
   const bairro = searchParams.get('bairro') || undefined
   const quartosMin = searchParams.get('quartos_min') ? Number(searchParams.get('quartos_min')) : undefined
+  const suitesMin = searchParams.get('suites_min') ? Number(searchParams.get('suites_min')) : undefined
+  const vagasMin = searchParams.get('vagas_min') ? Number(searchParams.get('vagas_min')) : undefined
   const valorMax = searchParams.get('valor_max') ? Number(searchParams.get('valor_max')) : undefined
   const destaque = searchParams.get('destaque') === 'true'
   const pagina = Math.max(1, Number(searchParams.get('pagina')) || 1)
+
+  const andClauses: any[] = []
 
   const where: any = { situacao: 'DISPONIVEL' }
 
@@ -21,6 +26,17 @@ export async function GET(req: NextRequest) {
   if (cidade) where.cidade = { contains: cidade, mode: 'insensitive' }
   if (bairro) where.bairro = { contains: bairro, mode: 'insensitive' }
   if (destaque) where.destaque = true
+
+  if (busca) {
+    andClauses.push({
+      OR: [
+        { bairro: { contains: busca, mode: 'insensitive' } },
+        { cidade: { contains: busca, mode: 'insensitive' } },
+        { nome: { contains: busca, mode: 'insensitive' } },
+        { edificio: { contains: busca, mode: 'insensitive' } },
+      ],
+    })
+  }
 
   if (quartosMin) {
     const faixas: Record<number, string[]> = {
@@ -30,6 +46,24 @@ export async function GET(req: NextRequest) {
       4: ['4_MAIS'],
     }
     where.dormitorios = { in: faixas[quartosMin] ?? ['4_MAIS'] }
+  }
+
+  if (suitesMin) {
+    const faixasSuites: Record<number, string[]> = {
+      1: ['1', '2', '3', '4_MAIS'],
+      2: ['2', '3', '4_MAIS'],
+      3: ['3', '4_MAIS'],
+    }
+    where.suites = { in: faixasSuites[suitesMin] ?? ['4_MAIS'] }
+  }
+
+  if (vagasMin) {
+    const faixasVagas: Record<number, string[]> = {
+      1: ['1', '2', '3_MAIS'],
+      2: ['2', '3_MAIS'],
+      3: ['3_MAIS'],
+    }
+    where.vagasGaragem = { in: faixasVagas[vagasMin] ?? ['3_MAIS'] }
   }
 
   if (modalidade === 'VENDA') {
@@ -44,12 +78,16 @@ export async function GET(req: NextRequest) {
     } else if (modalidade === 'LOCACAO') {
       where.valorLocacao = { lte: valorMax }
     } else {
-      where.OR = [
-        { valorVenda: { lte: valorMax, not: null } },
-        { valorLocacao: { lte: valorMax, not: null } },
-      ]
+      andClauses.push({
+        OR: [
+          { valorVenda: { lte: valorMax, not: null } },
+          { valorLocacao: { lte: valorMax, not: null } },
+        ],
+      })
     }
   }
+
+  if (andClauses.length > 0) where.AND = andClauses
 
   try {
     const [total, imoveis] = await Promise.all([

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { formatarMoeda } from '@/lib/utils'
+import BuscaHero from './BuscaHero'
 
 const LABEL_TIPO: Record<string, string> = {
   CASA: 'Casa', APARTAMENTO: 'Apartamento', TERRENO: 'Terreno', CHACARA: 'Chácara',
@@ -57,60 +58,7 @@ export default async function SiteHomePage() {
 
   return (
     <>
-      {/* Hero */}
-      <section
-        className="py-20 sm:py-28 px-4"
-        style={{ background: 'linear-gradient(160deg, #ffffff 0%, #f0f2f5 100%)' }}
-      >
-        <div className="max-w-3xl mx-auto text-center">
-          <h1 className="text-3xl sm:text-5xl font-bold text-[#1A1A2E] leading-tight mb-4">
-            Encontre o imóvel ideal{' '}
-            <span style={{ color: '#C9A84C' }}>em Santos</span>
-          </h1>
-          <p className="text-gray-500 text-lg sm:text-xl mb-10">
-            Apartamentos, casas, terrenos e muito mais para venda e locação.
-          </p>
-
-          {/* Barra de busca */}
-          <form
-            action="/imoveis"
-            method="get"
-            className="bg-white rounded-2xl shadow-lg p-4 flex flex-col sm:flex-row gap-3"
-          >
-            <select
-              name="tipo"
-              className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/50"
-            >
-              <option value="">Todos os tipos</option>
-              <option value="APARTAMENTO">Apartamento</option>
-              <option value="CASA">Casa</option>
-              <option value="TERRENO">Terreno</option>
-              <option value="CHACARA">Chácara</option>
-              <option value="SALA">Sala</option>
-              <option value="LOJA">Loja</option>
-              <option value="CASA_COMERCIAL">Casa Comercial</option>
-              <option value="GALPAO">Galpão</option>
-            </select>
-
-            <select
-              name="modalidade"
-              className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/50"
-            >
-              <option value="">Venda ou Locação</option>
-              <option value="VENDA">Venda</option>
-              <option value="LOCACAO">Locação</option>
-            </select>
-
-            <button
-              type="submit"
-              className="px-8 py-3 rounded-xl font-semibold text-white text-sm transition-opacity hover:opacity-90 flex-shrink-0"
-              style={{ background: '#C9A84C' }}
-            >
-              Buscar
-            </button>
-          </form>
-        </div>
-      </section>
+      <BuscaHero />
 
       {/* Destaques */}
       {destaques.length > 0 && (

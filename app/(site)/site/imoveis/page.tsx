@@ -170,9 +170,12 @@ function ListagemContent() {
 
   const [tipo, setTipo] = useState(() => searchParams.get('tipo') ?? '')
   const [modalidade, setModalidade] = useState(() => searchParams.get('modalidade') ?? '')
+  const [busca, setBusca] = useState(() => searchParams.get('busca') ?? '')
   const [cidade, setCidade] = useState(() => searchParams.get('cidade') ?? '')
   const [bairro, setBairro] = useState(() => searchParams.get('bairro') ?? '')
   const [quartosMin, setQuartosMin] = useState(() => searchParams.get('quartos_min') ?? '')
+  const [suitesMin, setSuitesMin] = useState(() => searchParams.get('suites_min') ?? '')
+  const [vagasMin, setVagasMin] = useState(() => searchParams.get('vagas_min') ?? '')
   const [valorMax, setValorMax] = useState(() => searchParams.get('valor_max') ?? '')
   const [pagina, setPagina] = useState(() => Number(searchParams.get('pagina') || 1))
 
@@ -182,9 +185,12 @@ function ListagemContent() {
       const params = new URLSearchParams()
       if (tipo) params.set('tipo', tipo)
       if (modalidade) params.set('modalidade', modalidade)
+      if (busca.trim()) params.set('busca', busca.trim())
       if (cidade) params.set('cidade', cidade)
       if (bairro) params.set('bairro', bairro)
       if (quartosMin) params.set('quartos_min', quartosMin)
+      if (suitesMin) params.set('suites_min', suitesMin)
+      if (vagasMin) params.set('vagas_min', vagasMin)
       if (valorMax) params.set('valor_max', valorMax)
       params.set('pagina', String(pg))
 
@@ -196,7 +202,7 @@ function ListagemContent() {
     } finally {
       setCarregando(false)
     }
-  }, [tipo, modalidade, cidade, bairro, quartosMin, valorMax, pagina])
+  }, [tipo, modalidade, busca, cidade, bairro, quartosMin, suitesMin, vagasMin, valorMax, pagina])
 
   useEffect(() => { buscar(pagina) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -204,9 +210,12 @@ function ListagemContent() {
     const params = new URLSearchParams()
     if (tipo) params.set('tipo', tipo)
     if (modalidade) params.set('modalidade', modalidade)
+    if (busca.trim()) params.set('busca', busca.trim())
     if (cidade) params.set('cidade', cidade.trim())
     if (bairro) params.set('bairro', bairro.trim())
     if (quartosMin) params.set('quartos_min', quartosMin)
+    if (suitesMin) params.set('suites_min', suitesMin)
+    if (vagasMin) params.set('vagas_min', vagasMin)
     if (valorMax) params.set('valor_max', valorMax)
     params.set('pagina', '1')
     setPagina(1)
@@ -215,8 +224,8 @@ function ListagemContent() {
   }
 
   function limparFiltros() {
-    setTipo(''); setModalidade(''); setCidade(''); setBairro('')
-    setQuartosMin(''); setValorMax(''); setPagina(1)
+    setTipo(''); setModalidade(''); setBusca(''); setCidade(''); setBairro('')
+    setQuartosMin(''); setSuitesMin(''); setVagasMin(''); setValorMax(''); setPagina(1)
     router.replace('/imoveis', { scroll: false })
     setCarregando(true)
     fetch('/api/imoveis/publico?pagina=1').then(r => r.json()).then(data => {
@@ -242,7 +251,7 @@ function ListagemContent() {
 
       {/* Filtros */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-8">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-3">
           <select
             value={tipo}
             onChange={e => setTipo(e.target.value)}
@@ -270,6 +279,13 @@ function ListagemContent() {
           </select>
 
           <input
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            placeholder="Condomínio, bairro ou cidade..."
+            className="col-span-2 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+          />
+
+          <input
             value={cidade}
             onChange={e => setCidade(e.target.value)}
             placeholder="Cidade"
@@ -293,6 +309,28 @@ function ListagemContent() {
             <option value="2">2+</option>
             <option value="3">3+</option>
             <option value="4">4+</option>
+          </select>
+
+          <select
+            value={suitesMin}
+            onChange={e => setSuitesMin(e.target.value)}
+            className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+          >
+            <option value="">Suítes</option>
+            <option value="1">1+</option>
+            <option value="2">2+</option>
+            <option value="3">3+</option>
+          </select>
+
+          <select
+            value={vagasMin}
+            onChange={e => setVagasMin(e.target.value)}
+            className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+          >
+            <option value="">Vagas</option>
+            <option value="1">1+</option>
+            <option value="2">2+</option>
+            <option value="3">3+</option>
           </select>
 
           <input
