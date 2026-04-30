@@ -32,7 +32,7 @@ function extrairFotoCapa(fotos: string | null): string | null {
 
 export default async function SiteHomePage() {
   let destaques = await prisma.imovel.findMany({
-    where: { situacao: 'DISPONIVEL', publicarSite: true, destaque: true },
+    where: { situacao: 'DISPONIVEL', destaque: true },
     take: 6,
     orderBy: { dataCadastro: 'desc' },
     select: {
@@ -44,7 +44,7 @@ export default async function SiteHomePage() {
 
   if (destaques.length === 0) {
     destaques = await prisma.imovel.findMany({
-      where: { situacao: 'DISPONIVEL', publicarSite: true },
+      where: { situacao: 'DISPONIVEL' },
       take: 6,
       orderBy: { dataCadastro: 'desc' },
       select: {

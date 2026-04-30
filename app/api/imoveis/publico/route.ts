@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const destaque = searchParams.get('destaque') === 'true'
   const pagina = Math.max(1, Number(searchParams.get('pagina')) || 1)
 
-  const where: any = { situacao: 'DISPONIVEL', publicarSite: true }
+  const where: any = { situacao: 'DISPONIVEL' }
 
   if (tipo) where.tipo = tipo
   if (cidade) where.cidade = { contains: cidade, mode: 'insensitive' }

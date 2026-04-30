@@ -53,7 +53,7 @@ function Caracteristica({ label, valor }: { label: string; valor?: string | numb
 
 export default async function DetalheImovelPage({ params }: { params: { ref: string } }) {
   const imovel = await prisma.imovel.findFirst({
-    where: { codigoRef: params.ref, situacao: 'DISPONIVEL', publicarSite: true },
+    where: { codigoRef: params.ref, situacao: 'DISPONIVEL' },
   })
 
   if (!imovel) notFound()
