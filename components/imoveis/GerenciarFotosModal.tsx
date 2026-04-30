@@ -8,12 +8,19 @@ interface FotoItem { url: string; ordem: number; principal: boolean }
 interface Props {
   imovelId: string
   fotosIniciais: FotoItem[]
+  onFotosChange?: (fotos: FotoItem[]) => void
 }
 
-export default function GerenciarFotosModal({ imovelId, fotosIniciais }: Props) {
+export default function GerenciarFotosModal({ imovelId, fotosIniciais, onFotosChange }: Props) {
   const [aberto, setAberto] = useState(false)
-  const [totalFotos, setTotalFotos] = useState(fotosIniciais.length)
+  // Estado próprio para persistir fotos entre abrir/fechar o modal
+  const [fotos, setFotos] = useState<FotoItem[]>(fotosIniciais)
   const overlayRef = useRef<HTMLDivElement>(null)
+
+  function handleFotosChange(novasFotos: FotoItem[]) {
+    setFotos(novasFotos)
+    onFotosChange?.(novasFotos)
+  }
 
   // Fecha ao pressionar ESC
   useEffect(() => {
@@ -62,7 +69,7 @@ export default function GerenciarFotosModal({ imovelId, fotosIniciais }: Props) 
               <div>
                 <h2 className="text-white font-semibold text-lg">Gerenciar Fotos</h2>
                 <p className="text-escuro-300 text-sm mt-0.5">
-                  {totalFotos} foto{totalFotos !== 1 ? 's' : ''} cadastrada{totalFotos !== 1 ? 's' : ''}
+                  {fotos.length} foto{fotos.length !== 1 ? 's' : ''} cadastrada{fotos.length !== 1 ? 's' : ''}
                 </p>
               </div>
               <button
@@ -81,8 +88,8 @@ export default function GerenciarFotosModal({ imovelId, fotosIniciais }: Props) 
             <div className="flex-1 overflow-y-auto p-5">
               <GaleriaFotos
                 imovelId={imovelId}
-                fotosIniciais={fotosIniciais}
-                onFotosChange={f => setTotalFotos(f.length)}
+                fotosIniciais={fotos}
+                onFotosChange={handleFotosChange}
               />
             </div>
           </div>

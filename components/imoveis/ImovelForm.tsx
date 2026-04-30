@@ -633,9 +633,10 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
     }
   }
 
-  const fotosIniciais: FotoItem[] = imovelInicial?.fotos
-    ? (() => { try { return JSON.parse(imovelInicial.fotos) } catch { return [] } })()
-    : []
+  const [fotosAtuais, setFotosAtuais] = useState<FotoItem[]>(() => {
+    if (!imovelInicial?.fotos) return []
+    try { return JSON.parse(imovelInicial.fotos) } catch { return [] }
+  })
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -1150,7 +1151,7 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
         <div className="card mb-6">
           <SecaoTitulo>5. Fotos</SecaoTitulo>
           <p className="text-sm text-escuro-300">
-            {fotosIniciais.length} foto{fotosIniciais.length !== 1 ? 's' : ''} cadastrada{fotosIniciais.length !== 1 ? 's' : ''}.
+            {fotosAtuais.length} foto{fotosAtuais.length !== 1 ? 's' : ''} cadastrada{fotosAtuais.length !== 1 ? 's' : ''}.
             {' '}Use o botão "Gerenciar Fotos" abaixo para adicionar, remover ou reordenar.
           </p>
         </div>
@@ -1180,7 +1181,7 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
           )}
           {modoEdicao && imovelId && (
             <>
-              {fotosIniciais.length > 0 && (
+              {fotosAtuais.length > 0 && (
                 <a
                   href={`/api/imoveis/${imovelId}/fotos/zip`}
                   download
@@ -1192,7 +1193,11 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
                   Baixar Fotos
                 </a>
               )}
-              <GerenciarFotosModal imovelId={imovelId} fotosIniciais={fotosIniciais} />
+              <GerenciarFotosModal
+                imovelId={imovelId}
+                fotosIniciais={fotosAtuais}
+                onFotosChange={setFotosAtuais}
+              />
             </>
           )}
         </div>
