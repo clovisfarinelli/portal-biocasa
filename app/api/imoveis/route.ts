@@ -77,7 +77,13 @@ export async function GET(req: NextRequest) {
   if (filtros.tipo) where.tipo = filtros.tipo
   if (filtros.cidade) where.cidade = { contains: filtros.cidade, mode: 'insensitive' }
   if (filtros.bairro) where.bairro = { contains: filtros.bairro, mode: 'insensitive' }
-  if (filtros.modalidade) where.modalidade = filtros.modalidade
+  if (filtros.modalidade) {
+    if (filtros.modalidade === 'AMBOS') {
+      where.modalidade = 'AMBOS'
+    } else {
+      where.modalidade = { in: [filtros.modalidade, 'AMBOS'] }
+    }
+  }
   if (filtros.situacao) where.situacao = filtros.situacao
   if (filtros.quartos) where.dormitorios = filtros.quartos
   if (filtros.dormitorios) where.dormitorios = filtros.dormitorios
@@ -171,6 +177,7 @@ const schemaCriarImovel = z.object({
   modalidade: z.string().min(1),
   valorVenda: z.number().optional(),
   valorLocacao: z.number().optional(),
+  locacaoPacote: z.boolean().default(false),
   valorCondominio: z.number().optional(),
   valorIptu: z.number().optional(),
   areaUtil: z.number().optional(),

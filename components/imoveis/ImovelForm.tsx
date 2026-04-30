@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import GerenciarFotosModal from './GerenciarFotosModal'
+import TagInput from '@/components/TagInput'
 import { formatarMoeda } from '@/lib/utils'
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -97,6 +98,7 @@ export interface ImovelCompleto {
   modalidade: string
   valorVenda: number | null
   valorLocacao: number | null
+  locacaoPacote: boolean
   valorCondominio: number | null
   valorIptu: number | null
   areaUtil: number | null
@@ -175,9 +177,10 @@ interface FormState {
   vistaMar: boolean
   tipoVistaMar: string
   facilidadesImovel: string[]
-  facilidadesImovelOutros: string
+  facilidadesImovelOutros: string[]
   facilidadesCond: string[]
-  facilidadesCondOutros: string
+  facilidadesCondOutros: string[]
+  locacaoPacote: boolean
   aceitaPermuta: boolean
   aceitaFinanc: boolean
   documentacaoOk: boolean
@@ -204,8 +207,9 @@ const FORM_VAZIO: FormState = {
   areaUtil: '', areaTotal: '',
   dormitorios: '', suites: '', totalBanheiros: '', vagasGaragem: '', tipoGaragem: '',
   situacaoImovel: '', dependencia: false, vistaMar: false, tipoVistaMar: '',
-  facilidadesImovel: [], facilidadesImovelOutros: '',
-  facilidadesCond: [], facilidadesCondOutros: '',
+  facilidadesImovel: [], facilidadesImovelOutros: [],
+  facilidadesCond: [], facilidadesCondOutros: [],
+  locacaoPacote: false,
   aceitaPermuta: false, aceitaFinanc: false, documentacaoOk: false, exclusividade: false,
   publicarSite: false, publicarPortais: false, destaque: false,
   linkSite: '', linkExterno: '', codIptu: '', codMatricula: '',
@@ -217,6 +221,14 @@ function imovelParaForm(imovel: ImovelCompleto): FormState {
   const parseFacil = (s: string | null): string[] => {
     if (!s) return []
     try { return JSON.parse(s) } catch { return [] }
+  }
+  const parseFacilOutros = (s: string | null): string[] => {
+    if (!s) return []
+    try {
+      const parsed = JSON.parse(s)
+      if (Array.isArray(parsed)) return parsed
+      return [s]
+    } catch { return [s] }
   }
   return {
     codigoRef: imovel.codigoRef,
@@ -256,9 +268,10 @@ function imovelParaForm(imovel: ImovelCompleto): FormState {
     vistaMar: imovel.vistaMar,
     tipoVistaMar: imovel.tipoVistaMar ?? '',
     facilidadesImovel: parseFacil(imovel.facilidadesImovel),
-    facilidadesImovelOutros: imovel.facilidadesImovelOutros ?? '',
+    facilidadesImovelOutros: parseFacilOutros(imovel.facilidadesImovelOutros),
     facilidadesCond: parseFacil(imovel.facilidadesCond),
-    facilidadesCondOutros: imovel.facilidadesCondOutros ?? '',
+    facilidadesCondOutros: parseFacilOutros(imovel.facilidadesCondOutros),
+    locacaoPacote: imovel.locacaoPacote,
     aceitaPermuta: imovel.aceitaPermuta,
     aceitaFinanc: imovel.aceitaFinanc,
     documentacaoOk: imovel.documentacaoOk,
@@ -532,9 +545,14 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
       vistaMar: form.vistaMar,
       tipoVistaMar: form.vistaMar ? (form.tipoVistaMar || undefined) : undefined,
       facilidadesImovel: arr(form.facilidadesImovel),
-      facilidadesImovelOutros: form.facilidadesImovel.includes('OUTROS') ? (form.facilidadesImovelOutros.trim() || undefined) : undefined,
+      facilidadesImovelOutros: form.facilidadesImovel.includes('OUTROS')
+        ? (form.facilidadesImovelOutros.length > 0 ? JSON.stringify(form.facilidadesImovelOutros) : undefined)
+        : undefined,
       facilidadesCond: semCondominio ? undefined : arr(form.facilidadesCond),
-      facilidadesCondOutros: (!semCondominio && form.facilidadesCond.includes('OUTROS')) ? (form.facilidadesCondOutros.trim() || undefined) : undefined,
+      facilidadesCondOutros: (!semCondominio && form.facilidadesCond.includes('OUTROS'))
+        ? (form.facilidadesCondOutros.length > 0 ? JSON.stringify(form.facilidadesCondOutros) : undefined)
+        : undefined,
+      locacaoPacote: form.locacaoPacote,
       aceitaPermuta: form.aceitaPermuta,
       aceitaFinanc: form.aceitaFinanc,
       documentacaoOk: form.documentacaoOk,
@@ -819,7 +837,7 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-2 gap-4 mb-3">
             {mostrarVenda && (
               <div>
                 <Label required>Valor de Venda (R$)</Label>
@@ -832,15 +850,30 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
                 <CampoMonetario value={form.valorLocacao} onChange={v => set('valorLocacao', v)} />
               </div>
             )}
-            <div>
-              <Label>Condomínio (R$/mês)</Label>
-              <CampoMonetario value={form.valorCondominio} onChange={v => set('valorCondominio', v)} />
-            </div>
-            <div>
-              <Label>IPTU Mensal (R$)</Label>
-              <CampoMonetario value={form.valorIptu} onChange={v => set('valorIptu', v)} />
-            </div>
           </div>
+
+          {mostrarLocacao && (
+            <div className="mb-3">
+              <Toggle
+                checked={form.locacaoPacote}
+                onChange={() => set('locacaoPacote', !form.locacaoPacote)}
+                label="É pacote? (aluguel já inclui condomínio e IPTU)"
+              />
+            </div>
+          )}
+
+          {!(mostrarLocacao && form.locacaoPacote) && (
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <Label>Condomínio (R$/mês)</Label>
+                <CampoMonetario value={form.valorCondominio} onChange={v => set('valorCondominio', v)} />
+              </div>
+              <div>
+                <Label>IPTU Mensal (R$)</Label>
+                <CampoMonetario value={form.valorIptu} onChange={v => set('valorIptu', v)} />
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
@@ -975,7 +1008,11 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
           </div>
           {form.facilidadesImovel.includes('OUTROS') && (
             <div className="mt-2">
-              <Input {...campo('facilidadesImovelOutros')} placeholder="Descreva outras facilidades" />
+              <TagInput
+                tags={form.facilidadesImovelOutros}
+                onChange={v => set('facilidadesImovelOutros', v)}
+                placeholder="Digite e pressione vírgula para adicionar..."
+              />
             </div>
           )}
         </div>
@@ -1026,7 +1063,11 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil }: Props) {
             </div>
             {form.facilidadesCond.includes('OUTROS') && (
               <div className="mt-2">
-                <Input {...campo('facilidadesCondOutros')} placeholder="Descreva outras facilidades do condomínio" />
+                <TagInput
+                  tags={form.facilidadesCondOutros}
+                  onChange={v => set('facilidadesCondOutros', v)}
+                  placeholder="Digite e pressione vírgula para adicionar..."
+                />
               </div>
             )}
           </div>

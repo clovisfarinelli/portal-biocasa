@@ -19,6 +19,7 @@ interface Imovel {
   modalidade: string
   valorVenda: number | null
   valorLocacao: number | null
+  locacaoPacote: boolean
   valorCondominio: number | null
   valorIptu: number | null
   areaUtil: number | null
@@ -279,9 +280,29 @@ export default function ImoveisPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
             {imoveis.map(imovel => {
               const foto = fotoPrincipal(imovel.fotos)
-              const valorDisplay = imovel.modalidade === 'LOCACAO'
-                ? (imovel.valorLocacao ? `${formatarMoeda(imovel.valorLocacao)}/mês` : null)
-                : (imovel.valorVenda ? formatarMoeda(imovel.valorVenda) : null)
+              const filtroMod = filtrosAtivos.modalidade
+
+              let valorVendaDisplay: number | null = null
+              let valorLocacaoDisplay: number | null = null
+
+              if (imovel.modalidade === 'VENDA') {
+                valorVendaDisplay = imovel.valorVenda
+              } else if (imovel.modalidade === 'LOCACAO') {
+                valorLocacaoDisplay = imovel.valorLocacao
+              } else {
+                // AMBOS — exibir conforme filtro ativo
+                if (filtroMod === 'VENDA') {
+                  valorVendaDisplay = imovel.valorVenda
+                } else if (filtroMod === 'LOCACAO') {
+                  valorLocacaoDisplay = imovel.valorLocacao
+                } else {
+                  valorVendaDisplay = imovel.valorVenda
+                  valorLocacaoDisplay = imovel.valorLocacao
+                }
+              }
+
+              const mostrandoLocacaoNoCard = valorLocacaoDisplay !== null
+              const ocultarCondIptu = imovel.locacaoPacote && mostrandoLocacaoNoCard
 
               const area = imovel.areaUtil ?? imovel.areaTotal
               const caracteristicas: string[] = []
@@ -351,11 +372,21 @@ export default function ImoveisPage() {
                       {imovel.bairro}, {imovel.cidade} - {imovel.estado}
                     </p>
 
-                    {valorDisplay && (
-                      <p className="text-white font-bold text-base mb-1">{valorDisplay}</p>
+                    {valorVendaDisplay && (
+                      <p className="text-white font-bold text-base mb-0.5">{formatarMoeda(valorVendaDisplay)}</p>
+                    )}
+                    {valorLocacaoDisplay && (
+                      <p className={`font-bold mb-1 flex items-center gap-2 ${valorVendaDisplay ? 'text-escuro-200 text-sm' : 'text-white text-base'}`}>
+                        {formatarMoeda(valorLocacaoDisplay)}/mês
+                        {imovel.locacaoPacote && (
+                          <span className="text-xs font-semibold px-1.5 py-0.5 rounded border bg-blue-900/40 text-blue-300 border-blue-700/50">
+                            Pacote
+                          </span>
+                        )}
+                      </p>
                     )}
 
-                    {(imovel.valorCondominio || imovel.valorIptu) && (
+                    {!ocultarCondIptu && (imovel.valorCondominio || imovel.valorIptu) && (
                       <p className="text-escuro-200 text-xs mb-1.5 flex gap-3">
                         {imovel.valorCondominio ? <span>Cond: {formatarMoeda(imovel.valorCondominio)}</span> : null}
                         {imovel.valorIptu ? <span>IPTU: {formatarMoeda(imovel.valorIptu)}</span> : null}

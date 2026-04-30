@@ -67,6 +67,7 @@ const schemaAtualizarImovel = z.object({
   modalidade: z.string().optional(),
   valorVenda: z.number().optional().nullable(),
   valorLocacao: z.number().optional().nullable(),
+  locacaoPacote: z.boolean().optional(),
   valorCondominio: z.number().optional().nullable(),
   valorIptu: z.number().optional().nullable(),
   areaUtil: z.number().optional().nullable(),

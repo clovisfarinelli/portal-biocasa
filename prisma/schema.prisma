@@ -223,6 +223,7 @@ model Imovel {
   modalidade       String
   valorVenda       Float?
   valorLocacao     Float?
+  locacaoPacote    Boolean  @default(false)
   valorCondominio  Float?
   valorIptu        Float?
 
