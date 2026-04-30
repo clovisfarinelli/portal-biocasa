@@ -13,7 +13,7 @@ export default function AcessoNegadoPage() {
         <p className="text-escuro-200 text-sm mb-6">
           Você não tem acesso a este módulo. Entre em contato com o administrador para solicitar a liberação.
         </p>
-        <Link href="/imoveis" className="btn-secondary text-sm">
+        <Link href="/" className="btn-secondary text-sm">
           Voltar
         </Link>
       </div>

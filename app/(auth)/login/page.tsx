@@ -16,7 +16,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.replace('/chat')
+      router.replace('/')
     }
   }, [status, router])
 
@@ -36,7 +36,7 @@ export default function LoginPage() {
     if (result?.error) {
       setErro('Email ou senha inválidos.')
     } else {
-      router.replace('/chat')
+      router.replace('/')
     }
   }
 
