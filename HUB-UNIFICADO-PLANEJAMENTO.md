@@ -1,0 +1,232 @@
+# Hub Unificado Biocasa — Plano de Desenvolvimento
+*Criado: Maio 2026*
+
+## Contexto
+Transformar o Portal Biocasa em um hub central onde todos os sistemas
+(análises, imóveis, atendimento, financeiro) rodam com a mesma cara e
+login único. Sem abrir outro software.
+
+## Visão final da Sidebar
+```
+├── 🏠  Análise de Viabilidade   (já existe)
+├── 🏢  Imóveis                  (já existe, melhorias em andamento)
+├── 💬  Atendimento (Chatwoot)   (Sessão 1)
+├── 📈  Dashboard Consolidado    (Sessão 2)
+├── 📊  Financeiro (ERPNext)     (Sessão 5)
+└── ⚙️  Configurações            (já existe)
+```
+
+## Arquitetura de integração
+- Chatwoot e ERPNext entram como iframe autenticado via SSO
+- Usuário faz login no portal → sistemas abrem já logados automaticamente
+- Cada unidade tem isolamento total de dados
+- MASTER vê tudo de todas as unidades (sócios da franqueadora + CF8 usam este perfil)
+
+---
+
+## SESSÃO 1 — Segurança Base ✅ CONCLUÍDA
+**Implementada em: Maio 2026**
+
+### 1.1 Firewall VPS2 + PostgreSQL SSL ✅
+- UFW ativo: deny default; portas 22/80/443/5433 liberadas
+- Vercel não oferece IPs estáticos gratuitos → segurança via SSL + scram-sha-256
+- Certificado SSL autoassinado em `/opt/stacks/postgres-biocasa/ssl/`
+- `ssl=on` no PostgreSQL via command args no docker-compose
+- **Pendência**: adicionar `?sslmode=require` ao DATABASE_URL no painel Vercel
+
+### 1.2 Porta 3306 do MariaDB ✅
+- Nunca estava exposta no host — nenhuma ação necessária
+
+### 1.3 Backup automático do PostgreSQL ✅
+- Script: `/opt/backups/biocasa/backup-biocasa.sh`
+- Cron: `0 3 * * *` (03h00 diariamente)
+- Retenção: 30 dias (rotação automática)
+- Restore testado e validado (10 tabelas, 6 usuários)
+
+### 1.4 Rate limiting nas APIs ✅
+- Implementado em `lib/rateLimit.ts` (sem dependência externa)
+- 10 req/min em `/api/auth` (login)
+- 30 req/min em `/api/analises` e `/api/arquivos`
+
+### 1.5 Logs de acesso ✅
+- Tabela `logs_acesso` criada via `db push`
+- `lib/logs.ts` com função `registrarLog()`
+- Ações registradas: login, analise_criada, arquivo_enviado, usuario_criado, configuracao_alterada
+
+### 1.6 2FA para MASTER ✅
+- Biblioteca: otplib v13 + qrcode
+- Fluxo: preflight check → QR code → verificação → ativação
+- Login em 2 etapas (senha + TOTP) quando ativado
+- Período de carência 24h (depois bloqueia acesso até configurar)
+- Rota de setup: `/configurar-2fa`
+- APIs: `/api/2fa/configurar` (GET/POST/DELETE), `/api/2fa/preflight`
+
+---
+
+## SESSÃO 2 — Chatwoot no Portal (iframe + SSO)
+**Prioridade: ALTA**
+
+### Contexto
+- Chatwoot roda na VPS1 em atendimento.cf8.com.br
+- Cada unidade tem uma Account separada no Chatwoot
+- Acesso via iframe tela cheia substituindo o conteúdo central
+
+### 2.1 Sidebar e roteamento
+- Adicionar item "Atendimento" na sidebar
+- Criar rota /dashboard/atendimento no Next.js
+- Criar componente ChatwootEmbed.tsx
+
+### 2.2 API route de autenticação SSO
+- Criar /api/chatwoot/token
+- Recebe sessão NextAuth → chama API do Chatwoot → retorna access_token
+- Token injetado no iframe via URL: atendimento.cf8.com.br?user_access_token=TOKEN
+
+### 2.3 Mapeamento de perfis
+| Portal | Chatwoot |
+|--------|----------|
+| MASTER | Administrator em todas as Accounts |
+| PROPRIETARIO | Administrator — só Account da sua unidade |
+| ESPECIALISTA | Agent — só conversas atribuídas |
+| ASSISTENTE | SDR — perfil já existente no Chatwoot |
+| CORRETOR | Corretor — perfil já existente no Chatwoot |
+
+Obs: os perfis SDR e Corretor já foram criados no Chatwoot.
+Confirmar antes de implementar se são roles customizadas ou Agents comuns
+— isso define como buscar o token na API.
+
+### 2.4 Fluxo do MASTER no módulo Atendimento
+- Abre direto na Account onde o usuário MASTER está cadastrado (default pessoal)
+- Seletor discreto no topo para trocar para qualquer outra Account e auditar
+- Ao trocar, reautentica o iframe na Account escolhida
+- Sem tela intermediária — troca é opcional, não interrompe o fluxo
+- Exemplo: CF8 (manutenção) cai na conta de suporte; sócio da franqueadora cai na conta da franqueadora
+
+### 2.5 Fluxo dos demais perfis
+- PROPRIETARIO → abre direto na Account da sua unidade, sem seletor
+- ESPECIALISTA/ASSISTENTE/CORRETOR → abre direto na sua Account, sem seletor
+
+### 2.6 Schema — campos novos na tabela usuarios
+- chatwoot_user_id
+- chatwoot_account_id
+
+### 2.7 Informações necessárias antes de começar
+- Credenciais de admin do Chatwoot (usuário/senha ou API token)
+- Confirmar se agentes já estão cadastrados no Chatwoot
+
+---
+
+## SESSÃO 3 — Dashboard Consolidado
+**Prioridade: ALTA**
+
+### Contexto
+Não será criado perfil FRANQUEADORA separado.
+Os 4 sócios da franqueadora + CF8 (manutenção) usam o perfil MASTER.
+MASTER já vê tudo de todas as unidades por design.
+
+### 3.1 Dashboard consolidado
+- Nova página /dashboard/consolidado
+- Acesso: MASTER
+- Métricas por unidade:
+  - Análises realizadas no mês
+  - Imóveis cadastrados
+  - Usuários ativos
+  - Custo de IA no mês
+- Filtros: por unidade, por período
+- Exportação de relatório PDF
+
+---
+
+## SESSÃO 4 — LGPD e Conformidade
+**Prioridade: MÉDIA — fazer antes de apresentar para a franqueadora**
+
+### 4.1 Documentos legais
+- Redigir Política de Privacidade
+- Redigir Termos de Uso
+- Publicar no portal (link no footer e na tela de login)
+
+### 4.2 Consentimento no primeiro login
+- Checkbox obrigatório: "Li e aceito a Política de Privacidade"
+- Registrar data e IP do aceite na tabela usuarios
+
+### 4.3 Política de retenção de dados
+- Análises: 5 anos
+- Arquivos de upload: 2 anos
+- Logs de acesso: 1 ano
+- Logs de erro: 6 meses
+- Criar rotina de limpeza automática
+
+### 4.4 Processo de exclusão de dados
+- Rota para MASTER solicitar exclusão de dados de um usuário
+- Processo documentado
+
+### 4.5 Registro de tratamento (interno)
+- Documento listando: dados coletados, finalidade, base legal, operadores
+- Operadores: Vercel, Google (Gemini), Hetzner
+
+---
+
+## SESSÃO 5 — ERPNext no Portal
+**Prioridade: MÉDIA — executar após as demais unidades estarem integradas**
+
+### 5.1 Sidebar e roteamento
+- Adicionar item "Financeiro" na sidebar
+- Visível para: MASTER e PROPRIETARIO
+- Rota /dashboard/financeiro
+
+### 5.2 SSO com ERPNext
+- ERPNext suporta OAuth/Social Login
+- Mesmo padrão do Chatwoot: token → iframe autenticado
+- Cada usuário mapeado para a Empresa da sua unidade no ERPNext
+
+### 5.3 Uma Empresa por unidade no ERPNext
+- Plano de contas padrão Biocasa replicado para cada empresa nova
+- MASTER tem acesso a todas as Empresas no ERPNext
+
+---
+
+## SESSÃO 6 — Onboarding de Novas Unidades
+**Prioridade: MÉDIA — executar quando chegar a 3ª unidade**
+
+### Checklist de onboarding (processo atual — manual)
+1. Criar registro na tabela `unidades` no banco
+2. Criar usuário PROPRIETARIO vinculado à unidade
+3. Criar Account no Chatwoot para a unidade
+4. Criar inbox do WhatsApp no Chatwoot
+5. Criar Empresa no ERPNext para a unidade
+6. Configurar limite de análises mensais
+7. Enviar credenciais de acesso ao franqueado
+
+### Automação futura
+- Formulário no painel MASTER que executa todos os passos acima
+- Avaliar viabilidade após Sessões 1-5 concluídas
+
+---
+
+## Escalabilidade — Regras de decisão
+
+| Situação | Ação |
+|----------|------|
+| Portal lento com muitas unidades | Migrar PostgreSQL para Supabase/Neon (só troca DATABASE_URL) |
+| VPS2 com RAM acima de 80% | Fazer upgrade de servidor na Hetzner |
+| Nova unidade chegando | Seguir checklist da Sessão 6 |
+| Franqueadora pedindo acesso | Criar usuário MASTER para os sócios |
+
+---
+
+## Regras permanentes (não alterar sem justificativa)
+- Rede Docker: sempre network_public
+- Nunca usar tag latest nas imagens Docker
+- Erros de API sempre logados em logs_erro
+- Variáveis sensíveis sempre em variáveis de ambiente
+- Interface sempre em Português do Brasil
+- Não mexer em Traefik, Portainer ou ERPNext sem necessidade
+
+## Status das Sessões
+| Sessão | Descrição | Status |
+|--------|-----------|--------|
+| 1 | Segurança Base | ✅ Concluída |
+| 2 | Chatwoot no Portal | ⏳ Pendente |
+| 3 | Dashboard Consolidado (MASTER) | ⏳ Pendente |
+| 4 | LGPD e Conformidade | ⏳ Pendente |
+| 5 | ERPNext no Portal | ⏳ Pendente |
+| 6 | Onboarding de Novas Unidades | ⏳ Pendente |
