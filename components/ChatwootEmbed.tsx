@@ -36,8 +36,11 @@ export default function ChatwootEmbed() {
         setContaSelecionada(data.chatwootAccountId)
 
         // Entrada via raiz: o Chatwoot processa o token e autentica
+        const url = `${CHATWOOT_URL}?user_access_token=${data.chatwootToken}`
+        console.log('[ChatwootEmbed] iframeSrc:', url)
+        console.log('[ChatwootEmbed] accountId:', data.chatwootAccountId)
         setIframeKey(data.chatwootToken)
-        setIframeSrc(`${CHATWOOT_URL}?user_access_token=${data.chatwootToken}`)
+        setIframeSrc(url)
 
         if (perfil === 'MASTER') {
           const resContas = await fetch('/api/chatwoot/contas')

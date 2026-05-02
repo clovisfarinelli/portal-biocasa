@@ -19,8 +19,13 @@ export async function GET() {
   })
 
   if (!usuario?.chatwootToken) {
+    console.log('[chatwoot/token] usuário sem token configurado:', (session.user as any).email)
     return NextResponse.json({ erro: 'Usuário sem acesso ao Chatwoot configurado' }, { status: 404 })
   }
+
+  console.log('[chatwoot/token] email:', (session.user as any).email)
+  console.log('[chatwoot/token] token (4 chars):', usuario.chatwootToken.slice(0, 4))
+  console.log('[chatwoot/token] accountId:', usuario.chatwootAccountId)
 
   return NextResponse.json({
     chatwootUserId:    usuario.chatwootUserId,
