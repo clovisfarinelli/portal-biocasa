@@ -46,6 +46,28 @@ export async function middleware(req: NextRequest) {
   const acessoIncorp = token.acessoIncorp as boolean | undefined
   const isAdmin = ['MASTER', 'PROPRIETARIO'].includes(perfil)
 
+  // Enforça 2FA para MASTER após o período de carência (24h)
+  const rotasLivresDoTotp = ['/configurar-2fa', '/api/2fa', '/api/auth', '/login']
+  const eRotaLivre = rotasLivresDoTotp.some(r => pathname.startsWith(r))
+
+  if (perfil === 'MASTER' && !eRotaLivre) {
+    const totpAtivado = token.totpAtivado as boolean | undefined
+    const graceExpiraEm = token.totpGraceExpiraEm as string | null | undefined
+
+    if (!totpAtivado) {
+      const graceExpirou = graceExpiraEm ? Date.now() > new Date(graceExpiraEm).getTime() : false
+      if (graceExpirou) {
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json(
+            { erro: '2FA obrigatório. Configure o autenticador no portal.' },
+            { status: 403 }
+          )
+        }
+        return NextResponse.redirect(new URL('/configurar-2fa', req.url))
+      }
+    }
+  }
+
   // Proteção do módulo de Imóveis
   if (!isAdmin && (pathname.startsWith('/imoveis') || pathname.startsWith('/api/imoveis'))) {
     if (!acessoImob) {
@@ -70,5 +92,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon\\.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon\\.ico|login|api/auth).*)'],
 }

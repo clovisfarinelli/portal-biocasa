@@ -67,9 +67,18 @@ model Usuario {
   criadoEm    DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
+  totpSecret        String?
+  totpAtivado       Boolean   @default(false)
+  totpGraceExpiraEm DateTime?
+
+  chatwootUserId    Int?
+  chatwootAccountId Int?
+  chatwootToken     String?
+
   unidade      Unidade?   @relation(fields: [unidadeId], references: [id])
   analises     Analise[]
   logsErro     LogErro[]
+  logsAcesso   LogAcesso[]
 
   @@map("usuarios")
 }
@@ -182,6 +191,19 @@ model LogErro {
   usuario   Usuario? @relation(fields: [usuarioId], references: [id])
 
   @@map("logs_erro")
+}
+
+model LogAcesso {
+  id        String   @id @default(cuid())
+  usuarioId String?
+  acao      String
+  detalhes  String?  @db.Text
+  ip        String?
+  criadoEm DateTime @default(now())
+
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id])
+
+  @@map("logs_acesso")
 }
 
 model Imovel {

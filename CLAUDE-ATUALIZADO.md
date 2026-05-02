@@ -21,6 +21,7 @@ Portal de **Análise de Viabilidade Imobiliária** com IA + **Módulo de Cadastr
 | ORM | Prisma | 5.x |
 | IA | Google Gemini 2.5 Flash | gemini-2.5-flash |
 | Autenticação | NextAuth.js | 4.x |
+| 2FA | otplib + qrcode | 13.x + 1.x |
 | Upload | Vercel Blob | 2.3.3 |
 | Compressão imagens | sharp | latest |
 | Deploy frontend | Vercel | — |
@@ -60,6 +61,9 @@ Portal de **Análise de Viabilidade Imobiliária** com IA + **Módulo de Cadastr
 - Usuário: biocasa_user
 - Compose: /opt/stacks/postgres-biocasa/docker-compose.yml
 - Senha com caracteres especiais — usar URL encoding: @ → %40, # → %23, ! → %21
+- **SSL ativo** — certificado autoassinado em `/opt/stacks/postgres-biocasa/ssl/`
+- **DATABASE_URL Vercel**: adicionar `?sslmode=require` ao final da URL
+- Autenticação: scram-sha-256 (já ativado)
 
 ## Estrutura de Diretórios
 
@@ -139,7 +143,8 @@ portal-biocasa/
 - aprendizados → resumos válidos com embedding
 - configuracoes → chave/valor (câmbio, etc)
 - logs_erro → erros de API
-- **imoveis** → cadastro completo de imóveis ← NOVO
+- logs_acesso → auditoria de ações (login, análises, uploads, criação de usuários, configurações) ← NOVO (Sessão 1)
+- **imoveis** → cadastro completo de imóveis
 
 ### Model Imovel — campos principais
 | Campo | Tipo | Descrição |
@@ -351,12 +356,24 @@ export \$(grep -v '^#' .env.local | xargs) && npx prisma db push
 - escuro-500 = cards e painéis
 - escuro-700 = sidebar e header
 
+## Segurança — Sessão 1 (implementada)
+| Item | Status | Detalhes |
+|------|--------|---------|
+| UFW ativo na VPS2 | ✅ | deny default; 22/80/443/5433 liberados |
+| PostgreSQL SSL | ✅ | Certificado autoassinado; `ssl=on`; scram-sha-256 |
+| Porta 3306 MariaDB | ✅ | Nunca estava exposta no host |
+| Backup automático | ✅ | `/opt/backups/biocasa`, cron 03h00, retenção 30 dias |
+| Rate limiting APIs | ✅ | 10 req/min login; 30 req/min analises/arquivos |
+| Logs de acesso | ✅ | Tabela `logs_acesso`; lib/logs.ts; 6 ações registradas |
+| 2FA TOTP para MASTER | ✅ | otplib; QR code; período de carência 24h; login em 2 etapas |
+| DATABASE_URL com SSL | ⚠ | **Ação manual necessária**: adicionar `?sslmode=require` no painel Vercel |
+
 ## Pendências / TODOs
 | # | Item | Prioridade |
 |---|------|-----------|
 | 1 | Busca semântica real com text-embedding-004 | Alta |
 | 2 | Análise Profunda com Google Search (400 bad request) | Alta |
-| 3 | Firewall UFW porta 5433 — liberar apenas IPs Vercel | Alta |
+| 3 | Adicionar `?sslmode=require` ao DATABASE_URL no painel Vercel | Alta |
 | 4 | Adicionar API_KEY_N8N no painel Vercel (env de produção) | Alta |
 | 5 | Script de importação Kenlo (~125 imóveis) via API /api/imoveis | Alta |
 | 6 | Site público de imóveis (portal de busca para clientes) | Média |

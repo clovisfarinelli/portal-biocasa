@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { obterLimiteArquivo } from '@/lib/utils'
+import { checarRateLimit, ipDaRequisicao, respostaLimiteExcedido } from '@/lib/rateLimit'
+import { registrarLog } from '@/lib/logs'
 
 const MAX_ARQUIVOS = 10
 
@@ -39,6 +41,9 @@ async function salvarArquivoLocal(arquivo: File): Promise<string> {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = ipDaRequisicao(req)
+  if (!checarRateLimit(`arquivos:${ip}`, 30, 60_000)) return respostaLimiteExcedido()
+
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
 
@@ -106,16 +111,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ erro: erroUsuario }, { status: 500 })
   }
 
+  const usuario = session.user as any
+
   if (analiseId) {
     try {
       const registro = await prisma.arquivoAnalise.create({
         data: { analiseId, tipo: arquivo.type, nomeArquivo: arquivo.name, arquivoUrl: url },
+      })
+      await registrarLog({
+        acao: 'arquivo_enviado',
+        usuarioId: usuario.id,
+        detalhes: `analiseId: ${analiseId}, arquivo: ${arquivo.name}`,
+        ip: ipDaRequisicao(req),
       })
       return NextResponse.json({ ...registro, nomeArquivo: arquivo.name, tipo: arquivo.type })
     } catch (dbErr: any) {
       console.error('[upload] erro ao gravar no banco:', dbErr?.message)
     }
   }
+
+  await registrarLog({
+    acao: 'arquivo_enviado',
+    usuarioId: usuario.id,
+    detalhes: `arquivo: ${arquivo.name}`,
+    ip: ipDaRequisicao(req),
+  })
 
   return NextResponse.json({ url, nome: arquivo.name, tipo: arquivo.type })
 }

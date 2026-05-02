@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { enviarMensagemGemini, ArquivoParaGemini } from '@/lib/gemini'
+import { checarRateLimit, ipDaRequisicao, respostaLimiteExcedido } from '@/lib/rateLimit'
+import { registrarLog } from '@/lib/logs'
 import { z } from 'zod'
 
 const schemaArquivo = z.object({
@@ -83,6 +85,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = ipDaRequisicao(req)
+  if (!checarRateLimit(`analises:${ip}`, 30, 60_000)) return respostaLimiteExcedido()
+
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
 
@@ -185,6 +190,13 @@ export async function POST(req: NextRequest) {
           data: { analisesMes: { increment: 1 } },
         })
       }
+
+      await registrarLog({
+        acao: 'analise_criada',
+        usuarioId: usuario.id,
+        detalhes: `analiseId: ${analise.id}`,
+        ip: ipDaRequisicao(req),
+      })
     }
 
     return NextResponse.json({

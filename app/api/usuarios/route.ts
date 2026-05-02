@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
+import { registrarLog } from '@/lib/logs'
+import { ipDaRequisicao } from '@/lib/rateLimit'
 
 const schemaCriarUsuario = z.object({
   nome: z.string().min(2),
@@ -106,6 +108,13 @@ export async function POST(req: NextRequest) {
       acessoIncorp: dados.acessoIncorp ?? false,
     },
     include: { unidade: true },
+  })
+
+  await registrarLog({
+    acao: 'usuario_criado',
+    usuarioId: operador.id,
+    detalhes: `novoUsuarioId: ${novoUsuario.id}, perfil: ${novoUsuario.perfil}`,
+    ip: ipDaRequisicao(req),
   })
 
   return NextResponse.json(novoUsuario, { status: 201 })

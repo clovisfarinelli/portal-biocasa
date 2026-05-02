@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { signIn, useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
 import LogoBiocasa from '@/components/LogoBiocasa'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
+  const [totpCode, setTotpCode] = useState('')
+  const [totpNecessario, setTotpNecessario] = useState(false)
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(false)
   const router = useRouter()
@@ -25,16 +26,50 @@ export default function LoginPage() {
     setErro('')
     setCarregando(true)
 
+    // Se ainda não verificamos se precisa de TOTP, verificamos agora
+    if (!totpNecessario) {
+      try {
+        const preflight = await fetch('/api/2fa/preflight', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: senha }),
+        })
+        const dados = await preflight.json()
+
+        if (!dados.ok) {
+          setErro('Email ou senha inválidos.')
+          setCarregando(false)
+          return
+        }
+
+        if (dados.totpRequired) {
+          setTotpNecessario(true)
+          setCarregando(false)
+          return
+        }
+      } catch {
+        setErro('Erro de conexão. Tente novamente.')
+        setCarregando(false)
+        return
+      }
+    }
+
+    // Login final via NextAuth (com ou sem totpCode)
     const result = await signIn('credentials', {
       email,
       password: senha,
+      totpCode: totpNecessario ? totpCode : '',
       redirect: false,
     })
 
     setCarregando(false)
 
     if (result?.error) {
-      setErro('Email ou senha inválidos.')
+      if (totpNecessario) {
+        setErro('Código inválido ou expirado. Tente novamente.')
+      } else {
+        setErro('Email ou senha inválidos.')
+      }
     } else {
       router.replace('/')
     }
@@ -64,31 +99,63 @@ export default function LoginPage() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="label">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="input-field"
-                placeholder="seu@email.com"
-                required
-                autoComplete="email"
-              />
-            </div>
+            {!totpNecessario ? (
+              <>
+                <div>
+                  <label className="label">Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    className="input-field"
+                    placeholder="seu@email.com"
+                    required
+                    autoComplete="email"
+                  />
+                </div>
 
-            <div>
-              <label className="label">Senha</label>
-              <input
-                type="password"
-                value={senha}
-                onChange={e => setSenha(e.target.value)}
-                className="input-field"
-                placeholder="••••••••"
-                required
-                autoComplete="current-password"
-              />
-            </div>
+                <div>
+                  <label className="label">Senha</label>
+                  <input
+                    type="password"
+                    value={senha}
+                    onChange={e => setSenha(e.target.value)}
+                    className="input-field"
+                    placeholder="••••••••"
+                    required
+                    autoComplete="current-password"
+                  />
+                </div>
+              </>
+            ) : (
+              <div>
+                <div className="text-center mb-4">
+                  <div className="text-3xl mb-2">🔐</div>
+                  <p className="text-white font-medium">Verificação em dois fatores</p>
+                  <p className="text-escuro-200 text-sm mt-1">
+                    Insira o código do seu aplicativo autenticador
+                  </p>
+                </div>
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={totpCode}
+                  onChange={e => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                  className="input-field text-center text-3xl tracking-widest"
+                  placeholder="000000"
+                  required
+                  autoFocus
+                  autoComplete="one-time-code"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setTotpNecessario(false); setTotpCode(''); setErro('') }}
+                  className="text-escuro-300 text-xs mt-2 underline w-full text-center"
+                >
+                  ← Voltar para email e senha
+                </button>
+              </div>
+            )}
 
             {erro && (
               <div className="bg-red-900/30 border border-red-700 text-red-300 rounded-lg px-4 py-3 text-sm">
@@ -98,15 +165,15 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={carregando}
+              disabled={carregando || (totpNecessario && totpCode.length !== 6)}
               className="btn-primary w-full py-3 text-base"
             >
               {carregando ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-escuro-600" />
-                  Entrando...
+                  {totpNecessario ? 'Verificando...' : 'Entrando...'}
                 </span>
-              ) : 'Entrar'}
+              ) : totpNecessario ? 'Verificar código' : 'Entrar'}
             </button>
           </form>
 
