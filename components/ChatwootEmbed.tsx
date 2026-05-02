@@ -11,11 +11,13 @@ export default function ChatwootEmbed() {
   const { data: session } = useSession()
   const perfil = (session?.user as any)?.perfil
 
-  const [token, setToken] = useState<string | null>(null)
+  const [token, setToken]                   = useState<string | null>(null)
   const [contaSelecionada, setContaSelecionada] = useState<number | null>(null)
-  const [contas, setContas] = useState<Conta[]>([])
-  const [erro, setErro] = useState<string | null>(null)
-  const [carregando, setCarregando] = useState(true)
+  const [contas, setContas]                 = useState<Conta[]>([])
+  const [iframeSrc, setIframeSrc]           = useState<string | null>(null)
+  const [iframeKey, setIframeKey]           = useState<string>('')
+  const [erro, setErro]                     = useState<string | null>(null)
+  const [carregando, setCarregando]         = useState(true)
 
   useEffect(() => {
     if (!session) return
@@ -33,6 +35,10 @@ export default function ChatwootEmbed() {
         setToken(data.chatwootToken)
         setContaSelecionada(data.chatwootAccountId)
 
+        // Entrada via raiz: o Chatwoot processa o token e autentica
+        setIframeKey(data.chatwootToken)
+        setIframeSrc(`${CHATWOOT_URL}?user_access_token=${data.chatwootToken}`)
+
         if (perfil === 'MASTER') {
           const resContas = await fetch('/api/chatwoot/contas')
           if (resContas.ok) {
@@ -49,6 +55,12 @@ export default function ChatwootEmbed() {
 
     carregar()
   }, [session, perfil])
+
+  function trocarConta(novaContaId: number) {
+    setContaSelecionada(novaContaId)
+    // Navega dentro do mesmo iframe (sem recarregar) — auth já está no localStorage do Chatwoot
+    setIframeSrc(`${CHATWOOT_URL}/app/accounts/${novaContaId}/conversations`)
+  }
 
   if (carregando) {
     return (
@@ -77,9 +89,7 @@ export default function ChatwootEmbed() {
     )
   }
 
-  if (!token || !contaSelecionada) return null
-
-  const iframeUrl = `${CHATWOOT_URL}/app/accounts/${contaSelecionada}/conversations?user_access_token=${token}`
+  if (!iframeSrc || !token) return null
 
   return (
     <div className="flex flex-col h-full">
@@ -90,8 +100,8 @@ export default function ChatwootEmbed() {
           </svg>
           <span className="text-xs text-escuro-300">Conta:</span>
           <select
-            value={contaSelecionada}
-            onChange={e => setContaSelecionada(Number(e.target.value))}
+            value={contaSelecionada ?? ''}
+            onChange={e => trocarConta(Number(e.target.value))}
             className="text-xs bg-escuro-600 border border-escuro-500 text-white rounded px-2 py-1 focus:outline-none focus:border-dourado-400 cursor-pointer"
           >
             {contas.map(c => (
@@ -101,8 +111,8 @@ export default function ChatwootEmbed() {
         </div>
       )}
       <iframe
-        key={`${contaSelecionada}-${token}`}
-        src={iframeUrl}
+        key={iframeKey}
+        src={iframeSrc}
         className="flex-1 w-full border-0"
         allow="clipboard-read; clipboard-write; microphone"
         title="Chatwoot Atendimento"
