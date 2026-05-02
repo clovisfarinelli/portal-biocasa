@@ -12,18 +12,21 @@ export async function GET() {
   const usuario = await prisma.usuario.findUnique({
     where: { id: usuarioId },
     select: {
+      email:             true,
       chatwootUserId:    true,
       chatwootAccountId: true,
       chatwootToken:     true,
     },
   })
 
+  console.log('[chatwoot/token] session.user.id:', usuarioId)
+  console.log('[chatwoot/token] session email:', (session.user as any).email)
+  console.log('[chatwoot/token] db email encontrado:', usuario?.email ?? 'nenhum')
+
   if (!usuario?.chatwootToken) {
-    console.log('[chatwoot/token] usuário sem token configurado:', (session.user as any).email)
     return NextResponse.json({ erro: 'Usuário sem acesso ao Chatwoot configurado' }, { status: 404 })
   }
 
-  console.log('[chatwoot/token] email:', (session.user as any).email)
   console.log('[chatwoot/token] token (4 chars):', usuario.chatwootToken.slice(0, 4))
   console.log('[chatwoot/token] accountId:', usuario.chatwootAccountId)
 

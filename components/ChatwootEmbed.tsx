@@ -36,7 +36,7 @@ export default function ChatwootEmbed() {
         setContaSelecionada(data.chatwootAccountId)
 
         // Entrada via raiz: o Chatwoot processa o token e autentica
-        const url = `${CHATWOOT_URL}?user_access_token=${data.chatwootToken}`
+        const url = `${CHATWOOT_URL}/app/login?user_access_token=${data.chatwootToken}`
         console.log('[ChatwootEmbed] iframeSrc:', url)
         console.log('[ChatwootEmbed] accountId:', data.chatwootAccountId)
         setIframeKey(data.chatwootToken)
