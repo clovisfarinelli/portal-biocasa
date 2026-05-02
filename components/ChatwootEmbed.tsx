@@ -11,13 +11,12 @@ export default function ChatwootEmbed() {
   const { data: session } = useSession()
   const perfil = (session?.user as any)?.perfil
 
-  const [token, setToken]                   = useState<string | null>(null)
   const [contaSelecionada, setContaSelecionada] = useState<number | null>(null)
-  const [contas, setContas]                 = useState<Conta[]>([])
-  const [iframeSrc, setIframeSrc]           = useState<string | null>(null)
-  const [iframeKey, setIframeKey]           = useState<string>('')
-  const [erro, setErro]                     = useState<string | null>(null)
-  const [carregando, setCarregando]         = useState(true)
+  const [contas, setContas]                     = useState<Conta[]>([])
+  const [iframeSrc, setIframeSrc]               = useState<string | null>(null)
+  const [iframeKey, setIframeKey]               = useState<string>('')
+  const [erro, setErro]                         = useState<string | null>(null)
+  const [carregando, setCarregando]             = useState(true)
 
   useEffect(() => {
     if (!session) return
@@ -25,22 +24,18 @@ export default function ChatwootEmbed() {
     async function carregar() {
       setCarregando(true)
       try {
-        const res = await fetch('/api/chatwoot/token')
+        const res = await fetch('/api/chatwoot/sso')
         if (!res.ok) {
           const data = await res.json()
           setErro(data.erro ?? 'Sem acesso ao Chatwoot')
           return
         }
         const data = await res.json()
-        setToken(data.chatwootToken)
-        setContaSelecionada(data.chatwootAccountId)
 
-        // Entrada via raiz: o Chatwoot processa o token e autentica
-        const url = `${CHATWOOT_URL}/app/login?user_access_token=${data.chatwootToken}`
-        console.log('[ChatwootEmbed] iframeSrc:', url)
-        console.log('[ChatwootEmbed] accountId:', data.chatwootAccountId)
-        setIframeKey(data.chatwootToken)
-        setIframeSrc(url)
+        // data.url = URL one-time de SSO gerada pela Platform API
+        setContaSelecionada(data.chatwootAccountId)
+        setIframeKey(data.url)   // URL única por sessão — força remount apenas na carga inicial
+        setIframeSrc(data.url)
 
         if (perfil === 'MASTER') {
           const resContas = await fetch('/api/chatwoot/contas')
@@ -61,7 +56,7 @@ export default function ChatwootEmbed() {
 
   function trocarConta(novaContaId: number) {
     setContaSelecionada(novaContaId)
-    // Navega dentro do mesmo iframe (sem recarregar) — auth já está no localStorage do Chatwoot
+    // Após SSO inicial, navega dentro do mesmo iframe autenticado
     setIframeSrc(`${CHATWOOT_URL}/app/accounts/${novaContaId}/conversations`)
   }
 
@@ -92,7 +87,7 @@ export default function ChatwootEmbed() {
     )
   }
 
-  if (!iframeSrc || !token) return null
+  if (!iframeSrc) return null
 
   return (
     <div className="flex flex-col h-full">

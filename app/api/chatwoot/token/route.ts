@@ -19,16 +19,9 @@ export async function GET() {
     },
   })
 
-  console.log('[chatwoot/token] session.user.id:', usuarioId)
-  console.log('[chatwoot/token] session email:', (session.user as any).email)
-  console.log('[chatwoot/token] db email encontrado:', usuario?.email ?? 'nenhum')
-
   if (!usuario?.chatwootToken) {
     return NextResponse.json({ erro: 'Usuário sem acesso ao Chatwoot configurado' }, { status: 404 })
   }
-
-  console.log('[chatwoot/token] token (4 chars):', usuario.chatwootToken.slice(0, 4))
-  console.log('[chatwoot/token] accountId:', usuario.chatwootAccountId)
 
   return NextResponse.json({
     chatwootUserId:    usuario.chatwootUserId,
