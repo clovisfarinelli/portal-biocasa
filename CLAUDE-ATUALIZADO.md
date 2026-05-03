@@ -1,5 +1,5 @@
 # Portal Biocasa — Guia de Arquitetura para Claude Code
-*Atualizado: Maio 2026 (Hub Unificado Sessão 2: Chatwoot via nova aba SSO)*
+*Atualizado: Maio 2026 (Hub Unificado Sessão 2: Chatwoot iframe SSO — domínio portal.cf8.com.br)*
 
 Este arquivo documenta a arquitetura completa, decisões técnicas e convenções do projeto.
 
@@ -10,7 +10,7 @@ Portal de **Análise de Viabilidade Imobiliária** com IA + **Módulo de Cadastr
 - Cinco perfis de acesso: MASTER, PROPRIETARIO, ESPECIALISTA, ASSISTENTE, CORRETOR
 - Documentos de referência por cidade melhoram análises com o tempo
 - Sistema de aprendizado baseado em validações dos usuários
-- Em produção: portal-biocasa.vercel.app
+- Em produção: portal.cf8.com.br
 
 ## Stack Técnica
 | Camada | Tecnologia | Versão |
@@ -267,7 +267,7 @@ portal-biocasa/
 
 ```
 DATABASE_URL="postgresql://biocasa_user:<SENHA_URL_ENCODED>@178.105.38.118:5433/portal_biocasa"
-NEXTAUTH_URL="https://portal-biocasa.vercel.app"
+NEXTAUTH_URL="https://portal.cf8.com.br"
 NEXTAUTH_SECRET="<openssl rand -base64 32>"
 GEMINI_API_KEY="<chave Google AI Studio>"
 BLOB_READ_WRITE_TOKEN="<token painel Vercel>"
@@ -291,7 +291,7 @@ ssh vps2 "docker exec -it \$(docker ps -q -f name=postgres-biocasa) psql -U bioc
 ssh vps2 "docker exec \$(docker ps -q -f name=postgres-biocasa) pg_dump -U biocasa_user portal_biocasa > /tmp/backup-biocasa-\$(date +%Y%m%d).sql"
 
 # Diagnóstico
-curl https://portal-biocasa.vercel.app/api/diagnostico?debug=biocasa2026
+curl https://portal.cf8.com.br/api/diagnostico?debug=biocasa2026
 
 # db:push local (precisa do .env.local)
 export \$(grep -v '^#' .env.local | xargs) && npx prisma db push
@@ -370,19 +370,25 @@ export \$(grep -v '^#' .env.local | xargs) && npx prisma db push
 | 2FA TOTP para MASTER | ✅ | otplib; QR code; período de carência 24h; login em 2 etapas |
 | DATABASE_URL com SSL | ⚠ | **Ação manual necessária**: adicionar `?sslmode=require` no painel Vercel |
 
-## Integração Chatwoot (Hub Unificado Sessão 2)
+## Integração Chatwoot (Hub Unificado Sessão 2) ✅
 
-### Abordagem: nova aba via SSO
-- Solução adotada: `window.open('/api/chatwoot/redirect', '_blank')` — contorna bloqueio de cookies de terceiros (SameSite) que impedia o iframe
-- `ChatwootEmbed.tsx`: tela simples com botão "Abrir Atendimento" — sem iframe, sem estado de carregamento
-- `app/api/chatwoot/redirect/route.ts`: autentica via Platform API e redireciona para URL SSO one-time
+### Solução final: iframe com SSO via Platform API
+- Portal em `portal.cf8.com.br` e Chatwoot em `atendimento.cf8.com.br` compartilham a raiz `.cf8.com.br`
+- Cookies `SameSite=None; Secure` configurados no Chatwoot via Docker — iframe funciona sem bloqueio
+- `ChatwootEmbed.tsx`: ao montar, chama `/api/chatwoot/sso` → carrega URL no iframe (100% da área)
+- `app/api/chatwoot/sso/route.ts`: gera URL SSO one-time via Platform API e retorna JSON
+- `app/api/chatwoot/redirect/route.ts`: alternativa redirect (mantido para uso futuro)
 
-### Fluxo SSO
-1. Usuário clica "Abrir Atendimento" → `window.open('/api/chatwoot/redirect', '_blank')`
-2. `GET /api/chatwoot/redirect`: verifica sessão NextAuth → busca `chatwootUserId` do usuário no banco
-3. Chama `POST /platform/api/v1/users/{chatwootUserId}/login` com `api_access_token: CHATWOOT_PLATFORM_TOKEN`
-4. Resposta: `{ url: "https://atendimento.cf8.com.br/app/login?token=..." }` → `NextResponse.redirect(data.url)`
-5. Nova aba abre já autenticada no Chatwoot
+### Fluxo SSO (iframe)
+1. Componente monta → `GET /api/chatwoot/sso`
+2. Servidor: verifica sessão → busca `chatwootUserId` no banco → chama `GET /platform/api/v1/users/{id}/login`
+3. Resposta: `{ url: "https://atendimento.cf8.com.br/app/login?sso_auth_token=..." }`
+4. iframe carrega a URL — usuário já autenticado no Chatwoot dentro do portal
+
+### Por que o iframe funciona no domínio portal.cf8.com.br
+- Bloqueio de cookies de terceiros (SameSite) só ocorre entre domínios raiz diferentes
+- `portal.cf8.com.br` → `atendimento.cf8.com.br`: mesmo domínio raiz `.cf8.com.br` = first-party context
+- `portal-biocasa.vercel.app` → `atendimento.cf8.com.br`: domínios raiz diferentes = third-party (bloqueado)
 
 ### Variável de ambiente necessária
 ```

@@ -80,10 +80,11 @@ login único. Sem abrir outro software.
 - `GET /api/chatwoot/redirect`: verifica sessão → busca `chatwootUserId` → chama Platform API → redirect para URL SSO one-time
 - Variável obrigatória: `CHATWOOT_PLATFORM_TOKEN` (super-admin token do Chatwoot)
 
-### 2.3 Abordagem: nova aba em vez de iframe ✅
-- **Motivo:** Cookies de terceiros bloqueados (SameSite) impediam SSO dentro do iframe
-- **Solução:** `window.open('/api/chatwoot/redirect', '_blank')` — nova aba já autenticada
-- `ChatwootEmbed.tsx` exibe tela simples com botão "Abrir Atendimento"
+### 2.3 Solução final: iframe com SSO ✅
+- **Portal:** `portal.cf8.com.br` | **Chatwoot:** `atendimento.cf8.com.br` — mesmo domínio raiz `.cf8.com.br`
+- Cookies SameSite=None; Secure configurados no Chatwoot via Docker → iframe funciona (first-party context)
+- `ChatwootEmbed.tsx`: chama `/api/chatwoot/sso` → carrega URL SSO one-time no iframe (100% da área)
+- Tentativa anterior de `window.open` foi necessária enquanto o portal estava em `vercel.app`
 
 ### 2.4 Schema — campo na tabela usuarios ✅
 - `chatwootUserId` (String?) — ID do usuário no Chatwoot; null = sem acesso
