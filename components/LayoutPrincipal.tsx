@@ -18,16 +18,14 @@ export default function LayoutPrincipal({ children }: { children: React.ReactNod
     <main className="flex-1 overflow-hidden relative">
       {jaAcessou && (
         <div
-          className="absolute inset-0"
-          style={{ display: emAtendimento ? 'block' : 'none' }}
+          style={emAtendimento
+            ? { position: 'absolute', inset: 0 }
+            : { position: 'fixed', left: '-9999px', top: 0, width: '100vw', height: '100vh' }}
         >
           <ChatwootEmbed />
         </div>
       )}
-      <div
-        className="h-full overflow-y-auto"
-        style={{ display: emAtendimento ? 'none' : 'block' }}
-      >
+      <div className="h-full overflow-y-auto">
         {children}
       </div>
     </main>
