@@ -1,34 +1,44 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { usePathname } from 'next/navigation'
+
+// Token SSO expira em ~2 min no Chatwoot — renovamos a cada 90s enquanto off-screen
+const REFRESH_MS = 90_000
 
 export default function ChatwootEmbed() {
   const { data: session } = useSession()
-  const userId = (session?.user as any)?.id as string | undefined
+  const userId    = (session?.user as any)?.id as string | undefined
+  const pathname  = usePathname()
 
   const [iframeSrc, setIframeSrc]   = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro]             = useState<string | null>(null)
 
-  // Dependência: apenas o ID do usuário — não re-executa em refreshes do objeto session
+  // Refs usados dentro do interval sem precisar recriá-lo
+  const emAtendimentoRef = useRef(pathname === '/atendimento')
+  const iniciadoRef      = useRef(false)
+
+  useEffect(() => {
+    emAtendimentoRef.current = pathname === '/atendimento'
+  }, [pathname])
+
+  // ── Carga inicial ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!userId) return
-
     let cancelado = false
 
-    async function carregar() {
+    async function buscarToken() {
       setCarregando(true)
       setErro(null)
       try {
-        const res = await fetch('/api/chatwoot/session')
+        const res  = await fetch('/api/chatwoot/sso')
         const data = await res.json()
         if (cancelado) return
-        if (!res.ok) {
-          setErro(data.erro ?? 'Sem acesso ao Chatwoot')
-          return
-        }
-        setIframeSrc(data.iframeSrc)
+        if (!res.ok) { setErro(data.erro ?? 'Sem acesso ao Chatwoot'); return }
+        setIframeSrc(data.url)
+        iniciadoRef.current = true
       } catch {
         if (!cancelado) setErro('Erro ao conectar com o Chatwoot')
       } finally {
@@ -36,10 +46,27 @@ export default function ChatwootEmbed() {
       }
     }
 
-    carregar()
+    buscarToken()
     return () => { cancelado = true }
   }, [userId])
 
+  // ── Refresh a cada 90s (só quando iframe está fora da tela) ───────────────
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      if (!iniciadoRef.current)      return  // ainda não carregou
+      if (emAtendimentoRef.current)  return  // usuário está vendo — não recarregar
+
+      try {
+        const res  = await fetch('/api/chatwoot/sso')
+        const data = await res.json()
+        if (res.ok && data.url) setIframeSrc(data.url)
+      } catch { /* falha silenciosa — próximo ciclo tentará novamente */ }
+    }, REFRESH_MS)
+
+    return () => clearInterval(timer)
+  }, []) // roda uma vez; usa refs para valores atuais
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   if (carregando) {
     return (
       <div className="flex items-center justify-center h-full bg-escuro-600">
