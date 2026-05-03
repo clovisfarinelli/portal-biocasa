@@ -1,5 +1,5 @@
 # Portal Biocasa — Guia de Arquitetura para Claude Code
-*Atualizado: Abril 2026 (Sessão 6: Imóveis — Filtros avançados, Faixa de Valor, Ordenação)*
+*Atualizado: Maio 2026 (Hub Unificado Sessão 2: Chatwoot via nova aba SSO)*
 
 Este arquivo documenta a arquitetura completa, decisões técnicas e convenções do projeto.
 
@@ -90,6 +90,8 @@ portal-biocasa/
 │   │   ├── logs-erro/
 │   │   ├── unidades/
 │   │   ├── usuarios/
+│   │   ├── chatwoot/
+│   │   │   └── redirect/           # GET — SSO via Platform API → redirect para Chatwoot
 │   │   └── imoveis/                # ← NOVO
 │   │       ├── route.ts            # GET (lista + n8n + busca texto) + POST
 │   │       ├── fotos/
@@ -367,6 +369,34 @@ export \$(grep -v '^#' .env.local | xargs) && npx prisma db push
 | Logs de acesso | ✅ | Tabela `logs_acesso`; lib/logs.ts; 6 ações registradas |
 | 2FA TOTP para MASTER | ✅ | otplib; QR code; período de carência 24h; login em 2 etapas |
 | DATABASE_URL com SSL | ⚠ | **Ação manual necessária**: adicionar `?sslmode=require` no painel Vercel |
+
+## Integração Chatwoot (Hub Unificado Sessão 2)
+
+### Abordagem: nova aba via SSO
+- Solução adotada: `window.open('/api/chatwoot/redirect', '_blank')` — contorna bloqueio de cookies de terceiros (SameSite) que impedia o iframe
+- `ChatwootEmbed.tsx`: tela simples com botão "Abrir Atendimento" — sem iframe, sem estado de carregamento
+- `app/api/chatwoot/redirect/route.ts`: autentica via Platform API e redireciona para URL SSO one-time
+
+### Fluxo SSO
+1. Usuário clica "Abrir Atendimento" → `window.open('/api/chatwoot/redirect', '_blank')`
+2. `GET /api/chatwoot/redirect`: verifica sessão NextAuth → busca `chatwootUserId` do usuário no banco
+3. Chama `POST /platform/api/v1/users/{chatwootUserId}/login` com `api_access_token: CHATWOOT_PLATFORM_TOKEN`
+4. Resposta: `{ url: "https://atendimento.cf8.com.br/app/login?token=..." }` → `NextResponse.redirect(data.url)`
+5. Nova aba abre já autenticada no Chatwoot
+
+### Variável de ambiente necessária
+```
+CHATWOOT_PLATFORM_TOKEN="<token de super-admin do Chatwoot>"
+```
+
+### Campos da tabela usuarios
+- `chatwootUserId` (String?) — ID numérico do usuário no Chatwoot; null = sem acesso ao módulo
+
+### Erros tratados
+- Sessão inválida → redirect para `/login`
+- `CHATWOOT_PLATFORM_TOKEN` ausente → 503
+- `chatwootUserId` não configurado → 404 com mensagem amigável
+- Platform API falhou → 502
 
 ## Pendências / TODOs
 | # | Item | Prioridade |

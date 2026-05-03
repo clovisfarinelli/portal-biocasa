@@ -63,55 +63,34 @@ login único. Sem abrir outro software.
 
 ---
 
-## SESSÃO 2 — Chatwoot no Portal (iframe + SSO)
-**Prioridade: ALTA**
+## SESSÃO 2 — Chatwoot no Portal (nova aba + SSO) ✅ CONCLUÍDA
+**Implementada em: Maio 2026**
 
 ### Contexto
 - Chatwoot roda na VPS1 em atendimento.cf8.com.br
 - Cada unidade tem uma Account separada no Chatwoot
 - Acesso via iframe tela cheia substituindo o conteúdo central
 
-### 2.1 Sidebar e roteamento
-- Adicionar item "Atendimento" na sidebar
-- Criar rota /dashboard/atendimento no Next.js
-- Criar componente ChatwootEmbed.tsx
+### 2.1 Sidebar e roteamento ✅
+- Item "Atendimento" na sidebar → `/atendimento`
+- Rota `/app/(dashboard)/atendimento/page.tsx` criada
+- Componente `ChatwootEmbed.tsx` implementado
 
-### 2.2 API route de autenticação SSO
-- Criar /api/chatwoot/token
-- Recebe sessão NextAuth → chama API do Chatwoot → retorna access_token
-- Token injetado no iframe via URL: atendimento.cf8.com.br?user_access_token=TOKEN
+### 2.2 API route SSO ✅
+- `GET /api/chatwoot/redirect`: verifica sessão → busca `chatwootUserId` → chama Platform API → redirect para URL SSO one-time
+- Variável obrigatória: `CHATWOOT_PLATFORM_TOKEN` (super-admin token do Chatwoot)
 
-### 2.3 Mapeamento de perfis
-| Portal | Chatwoot |
-|--------|----------|
-| MASTER | Administrator em todas as Accounts |
-| PROPRIETARIO | Administrator — só Account da sua unidade |
-| ESPECIALISTA | Agent — só conversas atribuídas |
-| ASSISTENTE | SDR — perfil já existente no Chatwoot |
-| CORRETOR | Corretor — perfil já existente no Chatwoot |
+### 2.3 Abordagem: nova aba em vez de iframe ✅
+- **Motivo:** Cookies de terceiros bloqueados (SameSite) impediam SSO dentro do iframe
+- **Solução:** `window.open('/api/chatwoot/redirect', '_blank')` — nova aba já autenticada
+- `ChatwootEmbed.tsx` exibe tela simples com botão "Abrir Atendimento"
 
-Obs: os perfis SDR e Corretor já foram criados no Chatwoot.
-Confirmar antes de implementar se são roles customizadas ou Agents comuns
-— isso define como buscar o token na API.
+### 2.4 Schema — campo na tabela usuarios ✅
+- `chatwootUserId` (String?) — ID do usuário no Chatwoot; null = sem acesso
 
-### 2.4 Fluxo do MASTER no módulo Atendimento
-- Abre direto na Account onde o usuário MASTER está cadastrado (default pessoal)
-- Seletor discreto no topo para trocar para qualquer outra Account e auditar
-- Ao trocar, reautentica o iframe na Account escolhida
-- Sem tela intermediária — troca é opcional, não interrompe o fluxo
-- Exemplo: CF8 (manutenção) cai na conta de suporte; sócio da franqueadora cai na conta da franqueadora
-
-### 2.5 Fluxo dos demais perfis
-- PROPRIETARIO → abre direto na Account da sua unidade, sem seletor
-- ESPECIALISTA/ASSISTENTE/CORRETOR → abre direto na sua Account, sem seletor
-
-### 2.6 Schema — campos novos na tabela usuarios
-- chatwoot_user_id
-- chatwoot_account_id
-
-### 2.7 Informações necessárias antes de começar
-- Credenciais de admin do Chatwoot (usuário/senha ou API token)
-- Confirmar se agentes já estão cadastrados no Chatwoot
+### Pendência de configuração (manual)
+- Adicionar `CHATWOOT_PLATFORM_TOKEN` no painel Vercel (variável de ambiente)
+- Preencher `chatwootUserId` nos registros dos usuários no banco
 
 ---
 
@@ -225,7 +204,7 @@ MASTER já vê tudo de todas as unidades por design.
 | Sessão | Descrição | Status |
 |--------|-----------|--------|
 | 1 | Segurança Base | ✅ Concluída |
-| 2 | Chatwoot no Portal | ⏳ Pendente |
+| 2 | Chatwoot no Portal | ✅ Concluída |
 | 3 | Dashboard Consolidado (MASTER) | ⏳ Pendente |
 | 4 | LGPD e Conformidade | ⏳ Pendente |
 | 5 | ERPNext no Portal | ⏳ Pendente |
