@@ -5,32 +5,40 @@ import { useSession } from 'next-auth/react'
 
 export default function ChatwootEmbed() {
   const { data: session } = useSession()
-  const [ssoUrl, setSsoUrl]       = useState<string | null>(null)
-  const [carregando, setCarregando] = useState(true)
-  const [erro, setErro]           = useState<string | null>(null)
+  const userId = (session?.user as any)?.id as string | undefined
 
+  const [iframeSrc, setIframeSrc]   = useState<string | null>(null)
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro]             = useState<string | null>(null)
+
+  // Dependência: apenas o ID do usuário — não re-executa em refreshes do objeto session
   useEffect(() => {
-    if (!session) return
+    if (!userId) return
+
+    let cancelado = false
 
     async function carregar() {
       setCarregando(true)
+      setErro(null)
       try {
-        const res = await fetch('/api/chatwoot/sso')
+        const res = await fetch('/api/chatwoot/session')
         const data = await res.json()
+        if (cancelado) return
         if (!res.ok) {
           setErro(data.erro ?? 'Sem acesso ao Chatwoot')
           return
         }
-        setSsoUrl(data.url)
+        setIframeSrc(data.iframeSrc)
       } catch {
-        setErro('Erro ao conectar com o Chatwoot')
+        if (!cancelado) setErro('Erro ao conectar com o Chatwoot')
       } finally {
-        setCarregando(false)
+        if (!cancelado) setCarregando(false)
       }
     }
 
     carregar()
-  }, [session])
+    return () => { cancelado = true }
+  }, [userId])
 
   if (carregando) {
     return (
@@ -59,12 +67,12 @@ export default function ChatwootEmbed() {
     )
   }
 
-  if (!ssoUrl) return null
+  if (!iframeSrc) return null
 
   return (
     <div className="flex flex-col h-full">
       <iframe
-        src={ssoUrl}
+        src={iframeSrc}
         className="w-full h-full border-0"
         allow="clipboard-read; clipboard-write; microphone"
         title="Chatwoot Atendimento"
