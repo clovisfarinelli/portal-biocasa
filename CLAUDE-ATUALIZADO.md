@@ -1,5 +1,5 @@
 # Portal Biocasa — Guia de Arquitetura para Claude Code
-*Atualizado: Maio 2026 (Hub Unificado Sessão 2: Chatwoot iframe SSO — domínio portal.cf8.com.br)*
+*Atualizado: Maio 2026 (Hub Unificado Sessão 3: Dashboard Consolidado)*
 
 Este arquivo documenta a arquitetura completa, decisões técnicas e convenções do projeto.
 
@@ -76,7 +76,9 @@ portal-biocasa/
 │   │   ├── chat/page.tsx           # Chat de análise (incorporação)
 │   │   ├── usuarios/page.tsx
 │   │   ├── treinar-ia/page.tsx     # MASTER apenas
-│   │   └── analises-unidades/      # Análises (MASTER)
+│   │   ├── analises-unidades/      # Análises (MASTER)
+│   │   ├── atendimento/            # Chatwoot iframe SSO
+│   │   └── consolidado/            # Dashboard Consolidado (MASTER)
 │   ├── api/
 │   │   ├── auth/[...nextauth]/
 │   │   ├── analises/               # CRUD + envio ao Gemini
@@ -92,6 +94,7 @@ portal-biocasa/
 │   │   ├── usuarios/
 │   │   ├── chatwoot/
 │   │   │   └── redirect/           # GET — SSO via Platform API → redirect para Chatwoot
+│   │   ├── dashboard-consolidado/  # GET — métricas agregadas por unidade (MASTER)
 │   │   └── imoveis/                # ← NOVO
 │   │       ├── route.ts            # GET (lista + n8n + busca texto) + POST
 │   │       ├── fotos/
@@ -369,6 +372,25 @@ export \$(grep -v '^#' .env.local | xargs) && npx prisma db push
 | Logs de acesso | ✅ | Tabela `logs_acesso`; lib/logs.ts; 6 ações registradas |
 | 2FA TOTP para MASTER | ✅ | otplib; QR code; período de carência 24h; login em 2 etapas |
 | DATABASE_URL com SSL | ⚠ | **Ação manual necessária**: adicionar `?sslmode=require` no painel Vercel |
+
+## Dashboard Consolidado (Hub Unificado Sessão 3) ✅
+
+### Rota e acesso
+- URL: `/consolidado` — acesso exclusivo MASTER
+- Arquivo: `app/(dashboard)/consolidado/page.tsx` + `components/DashboardConsolidado.tsx`
+- Sidebar: item "Dashboard" entre Atendimento e Usuários (visível só para MASTER)
+
+### API `GET /api/dashboard-consolidado`
+- Query params: `unidadeId?` (filtro por unidade) | `meses?` (1–24, padrão 6)
+- Retorna: `{ metricas[], evolucaoMensal[] }`
+- `metricas`: uma entrada por unidade com `analisesMes`, `limiteAnalises`, `analisesNoPeriodo`, `custoNoPeriodo`, `imoveisCadastrados`, `usuariosAtivos`
+- `evolucaoMensal`: array com `{ mes, label, analises, custo }` para cada mês do período
+
+### Interface
+- 4 cards de totais (análises, custo IA, imóveis, usuários)
+- Tabela por unidade — destaca em vermelho quando `analisesMes >= limiteAnalises`
+- 2 gráficos de barras CSS (sem dependência externa): análises por mês + custo por mês
+- Filtros: seletor de unidade (aparece quando há mais de 1) + botões de período
 
 ## Integração Chatwoot (Hub Unificado Sessão 2) ✅
 

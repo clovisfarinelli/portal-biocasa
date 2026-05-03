@@ -95,24 +95,22 @@ login único. Sem abrir outro software.
 
 ---
 
-## SESSÃO 3 — Dashboard Consolidado
-**Prioridade: ALTA**
+## SESSÃO 3 — Dashboard Consolidado ✅ CONCLUÍDA
+**Implementada em: Maio 2026**
 
 ### Contexto
 Não será criado perfil FRANQUEADORA separado.
 Os 4 sócios da franqueadora + CF8 (manutenção) usam o perfil MASTER.
 MASTER já vê tudo de todas as unidades por design.
 
-### 3.1 Dashboard consolidado
-- Nova página /dashboard/consolidado
-- Acesso: MASTER
-- Métricas por unidade:
-  - Análises realizadas no mês
-  - Imóveis cadastrados
-  - Usuários ativos
-  - Custo de IA no mês
-- Filtros: por unidade, por período
-- Exportação de relatório PDF
+### 3.1 Dashboard consolidado ✅
+- Página `/consolidado` — acesso MASTER
+- Item "Dashboard" na sidebar entre Atendimento e Usuários
+- Métricas por unidade: análises no período, custo IA, imóveis, usuários ativos
+- Filtros: por unidade + período (1/3/6/12 meses)
+- Gráficos de barras CSS (sem lib externa): análises por mês + custo por mês
+- Tabela por unidade com alerta vermelho quando limite de análises atingido
+- API `GET /api/dashboard-consolidado`
 
 ---
 
@@ -206,7 +204,7 @@ MASTER já vê tudo de todas as unidades por design.
 |--------|-----------|--------|
 | 1 | Segurança Base | ✅ Concluída |
 | 2 | Chatwoot no Portal | ✅ Concluída |
-| 3 | Dashboard Consolidado (MASTER) | ⏳ Pendente |
+| 3 | Dashboard Consolidado (MASTER) | ✅ Concluída |
 | 4 | LGPD e Conformidade | ⏳ Pendente |
 | 5 | ERPNext no Portal | ⏳ Pendente |
 | 6 | Onboarding de Novas Unidades | ⏳ Pendente |
