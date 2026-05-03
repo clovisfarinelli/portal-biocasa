@@ -6,6 +6,7 @@ export type AcaoLog =
   | 'analise_criada'
   | 'arquivo_enviado'
   | 'usuario_criado'
+  | 'convite_enviado'
   | 'configuracao_alterada'
 
 export async function registrarLog(params: {

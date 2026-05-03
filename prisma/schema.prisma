@@ -75,6 +75,9 @@ model Usuario {
   chatwootAccountId Int?
   chatwootToken     String?
 
+  conviteToken     String?   @unique
+  conviteExpiraEm  DateTime?
+
   unidade      Unidade?   @relation(fields: [unidadeId], references: [id])
   analises     Analise[]
   logsErro     LogErro[]

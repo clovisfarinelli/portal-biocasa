@@ -74,6 +74,7 @@ export default function UserManagement({ session }: { session: Session }) {
   const [editandoUsuario, setEditandoUsuario] = useState<Usuario | null>(null)
   const [erroUsuario, setErroUsuario] = useState('')
   const [cambioDolar, setCambioDolar] = useState('5.50')
+  const [conviteEnviado, setConviteEnviado] = useState<{ email: string; url: string | null } | null>(null)
 
   const [formUsuario, setFormUsuario] = useState({
     nome: '', email: '', senha: '',
@@ -170,7 +171,7 @@ export default function UserManagement({ session }: { session: Session }) {
   async function salvarUsuario() {
     setErroUsuario('')
     try {
-      const url = editandoUsuario ? `/api/usuarios/${editandoUsuario.id}` : '/api/usuarios'
+      const url    = editandoUsuario ? `/api/usuarios/${editandoUsuario.id}` : '/api/usuarios'
       const method = editandoUsuario ? 'PATCH' : 'POST'
       const body: any = {
         nome: formUsuario.nome,
@@ -182,14 +183,14 @@ export default function UserManagement({ session }: { session: Session }) {
       }
       if (formUsuario.senha) body.senha = formUsuario.senha
 
-      const res = await fetch(url, {
+      const res  = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
+      const data = await res.json()
 
       if (!res.ok) {
-        const data = await res.json()
         setErroUsuario(data.erro ?? 'Erro ao salvar usuário')
         return
       }
@@ -198,6 +199,11 @@ export default function UserManagement({ session }: { session: Session }) {
       setEditandoUsuario(null)
       resetFormUsuario()
       carregarUsuarios()
+
+      // Se convite foi enviado (novo usuário sem senha), mostrar URL de fallback
+      if (!editandoUsuario && !formUsuario.senha) {
+        setConviteEnviado({ email: data.email, url: data.conviteUrl })
+      }
     } catch {
       setErroUsuario('Erro de conexão')
     }
@@ -616,8 +622,13 @@ export default function UserManagement({ session }: { session: Session }) {
                 <input type="email" value={formUsuario.email} onChange={e => setFormUsuario(f => ({ ...f, email: e.target.value }))} className="input-field" placeholder="email@exemplo.com" />
               </div>
               <div>
-                <label className="label">{editandoUsuario ? 'Nova Senha (deixe em branco para manter)' : 'Senha'}</label>
-                <input type="password" value={formUsuario.senha} onChange={e => setFormUsuario(f => ({ ...f, senha: e.target.value }))} className="input-field" placeholder={editandoUsuario ? '••••••••' : 'Mínimo 8 caracteres'} />
+                <label className="label">
+                  {editandoUsuario ? 'Nova Senha (deixe em branco para manter)' : 'Senha'}
+                  {!editandoUsuario && (
+                    <span className="ml-2 text-xs text-escuro-300 font-normal">— deixe em branco para enviar convite por email</span>
+                  )}
+                </label>
+                <input type="password" value={formUsuario.senha} onChange={e => setFormUsuario(f => ({ ...f, senha: e.target.value }))} className="input-field" placeholder={editandoUsuario ? '••••••••' : 'Opcional — deixe em branco para convidar'} />
               </div>
 
               {/* Perfil — MASTER vê todos; PROPRIETARIO vê apenas subordinados */}
@@ -679,6 +690,41 @@ export default function UserManagement({ session }: { session: Session }) {
               <button onClick={salvarUsuario} className="btn-primary flex-1 py-2.5">{editandoUsuario ? 'Salvar Alterações' : 'Criar Usuário'}</button>
               <button onClick={() => { setShowModalUsuario(false); setEditandoUsuario(null); resetFormUsuario() }} className="btn-secondary flex-1 py-2.5">Cancelar</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Convite Enviado ── */}
+      {conviteEnviado && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="card w-full max-w-md text-center">
+            <div className="w-14 h-14 rounded-full bg-green-900/30 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-white mb-2">Convite enviado!</h2>
+            <p className="text-escuro-200 text-sm mb-4">
+              Um email foi enviado para <span className="text-white font-medium">{conviteEnviado.email}</span> com o link de ativação.
+            </p>
+            {conviteEnviado.url && (
+              <div className="mb-4">
+                <p className="text-xs text-escuro-300 mb-1">Link de fallback (caso o email não chegue):</p>
+                <div className="bg-escuro-700 rounded-lg px-3 py-2 flex items-center gap-2">
+                  <p className="text-xs text-dourado-400 break-all flex-1">{conviteEnviado.url}</p>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(conviteEnviado.url!)}
+                    className="text-escuro-300 hover:text-white shrink-0"
+                    title="Copiar link"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+            <button onClick={() => setConviteEnviado(null)} className="btn-primary px-8 py-2.5">Fechar</button>
           </div>
         </div>
       )}

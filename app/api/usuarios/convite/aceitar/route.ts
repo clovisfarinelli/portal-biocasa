@@ -1,0 +1,41 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
+import { z } from 'zod'
+
+const schema = z.object({
+  token: z.string().uuid(),
+  senha: z.string().min(8),
+})
+
+export async function POST(req: NextRequest) {
+  const body = await req.json()
+  const { token, senha } = schema.parse(body)
+
+  const usuario = await prisma.usuario.findUnique({
+    where: { conviteToken: token },
+    select: { id: true, email: true, conviteExpiraEm: true },
+  })
+
+  if (!usuario) {
+    return NextResponse.json({ erro: 'Convite inválido ou já utilizado' }, { status: 404 })
+  }
+
+  if (usuario.conviteExpiraEm && usuario.conviteExpiraEm < new Date()) {
+    return NextResponse.json({ erro: 'Este convite expirou. Solicite um novo ao administrador.' }, { status: 410 })
+  }
+
+  const senhaHash = await bcrypt.hash(senha, 12)
+
+  await prisma.usuario.update({
+    where: { id: usuario.id },
+    data: {
+      senhaHash,
+      ativo: true,
+      conviteToken: null,
+      conviteExpiraEm: null,
+    },
+  })
+
+  return NextResponse.json({ ok: true, email: usuario.email })
+}

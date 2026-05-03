@@ -7,11 +7,12 @@ import { z } from 'zod'
 import { registrarLog } from '@/lib/logs'
 import { ipDaRequisicao } from '@/lib/rateLimit'
 import { criarUsuarioChatwoot } from '@/lib/chatwoot'
+import { enviarConvite } from '@/lib/email'
 
 const schemaCriarUsuario = z.object({
   nome: z.string().min(2),
   email: z.string().email(),
-  senha: z.string().min(8),
+  senha: z.string().min(8).optional(),
   perfil: z.enum(['MASTER', 'PROPRIETARIO', 'ESPECIALISTA', 'ASSISTENTE', 'CORRETOR']),
   unidadeId: z.string().optional(),
   acessoImob: z.boolean().optional(),
@@ -97,7 +98,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ erro: 'Email já cadastrado' }, { status: 409 })
   }
 
-  const senhaHash = await bcrypt.hash(dados.senha, 12)
+  const convite = !dados.senha
+  const senhaHash = await bcrypt.hash(dados.senha ?? crypto.randomUUID(), 12)
+
+  const conviteToken    = convite ? crypto.randomUUID() : null
+  const conviteExpiraEm = convite ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null
+
   const novoUsuario = await prisma.usuario.create({
     data: {
       nome: dados.nome,
@@ -107,6 +113,9 @@ export async function POST(req: NextRequest) {
       unidadeId: dados.unidadeId ?? null,
       acessoImob: dados.acessoImob ?? false,
       acessoIncorp: dados.acessoIncorp ?? false,
+      ativo: !convite,
+      conviteToken,
+      conviteExpiraEm,
     },
     include: { unidade: true },
   })
@@ -114,19 +123,23 @@ export async function POST(req: NextRequest) {
   // Criar no Chatwoot e salvar IDs — falha silenciosa se Chatwoot indisponível
   const cwDados = await criarUsuarioChatwoot(novoUsuario.nome, novoUsuario.email, novoUsuario.perfil)
   if (cwDados) {
-    await prisma.usuario.update({
-      where: { id: novoUsuario.id },
-      data: cwDados,
-    })
+    await prisma.usuario.update({ where: { id: novoUsuario.id }, data: cwDados })
     Object.assign(novoUsuario, cwDados)
   }
 
+  let conviteUrl: string | null = null
+  if (convite && conviteToken) {
+    const base = process.env.NEXTAUTH_URL ?? 'https://portal.cf8.com.br'
+    conviteUrl = `${base}/convite?token=${conviteToken}`
+    await enviarConvite(novoUsuario.nome, novoUsuario.email, conviteUrl)
+  }
+
   await registrarLog({
-    acao: 'usuario_criado',
+    acao: convite ? 'convite_enviado' : 'usuario_criado',
     usuarioId: operador.id,
-    detalhes: `novoUsuarioId: ${novoUsuario.id}, perfil: ${novoUsuario.perfil}, chatwootUserId: ${cwDados?.chatwootUserId ?? 'não criado'}`,
+    detalhes: `novoUsuarioId: ${novoUsuario.id}, perfil: ${novoUsuario.perfil}`,
     ip: ipDaRequisicao(req),
   })
 
-  return NextResponse.json(novoUsuario, { status: 201 })
+  return NextResponse.json({ ...novoUsuario, conviteUrl }, { status: 201 })
 }
