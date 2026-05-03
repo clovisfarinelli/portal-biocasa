@@ -15,12 +15,12 @@ export default function LayoutPrincipal({ children }: { children: React.ReactNod
   }, [emAtendimento])
 
   return (
-    <main className="flex-1 overflow-hidden relative">
+    <main className="flex-1 relative w-full h-full overflow-hidden">
       {jaAcessou && (
         <div
           style={emAtendimento
-            ? { position: 'absolute', inset: 0 }
-            : { position: 'fixed', left: '-9999px', top: 0, width: '100vw', height: '100vh' }}
+            ? { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }
+            : { position: 'fixed', top: 0, left: '-9999px', width: '100vw', height: '100vh' }}
         >
           <ChatwootEmbed />
         </div>
