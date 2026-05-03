@@ -1,120 +1,39 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
-
-const CHATWOOT_URL = 'https://atendimento.cf8.com.br'
-
-type Conta = { id: number; nome: string }
-
 export default function ChatwootEmbed() {
-  const { data: session } = useSession()
-  const perfil = (session?.user as any)?.perfil
-
-  const [contaSelecionada, setContaSelecionada] = useState<number | null>(null)
-  const [contas, setContas]                     = useState<Conta[]>([])
-  const [iframeSrc, setIframeSrc]               = useState<string | null>(null)
-  const [iframeKey, setIframeKey]               = useState<string>('')
-  const [erro, setErro]                         = useState<string | null>(null)
-  const [carregando, setCarregando]             = useState(true)
-
-  useEffect(() => {
-    if (!session) return
-
-    async function carregar() {
-      setCarregando(true)
-      try {
-        const res = await fetch('/api/chatwoot/sso')
-        if (!res.ok) {
-          const data = await res.json()
-          setErro(data.erro ?? 'Sem acesso ao Chatwoot')
-          return
-        }
-        const data = await res.json()
-
-        // data.url = URL one-time de SSO gerada pela Platform API
-        setContaSelecionada(data.chatwootAccountId)
-        setIframeKey(data.url)   // URL única por sessão — força remount apenas na carga inicial
-        setIframeSrc(data.url)
-
-        if (perfil === 'MASTER') {
-          const resContas = await fetch('/api/chatwoot/contas')
-          if (resContas.ok) {
-            const dadosContas = await resContas.json()
-            setContas(dadosContas.contas ?? [])
-          }
-        }
-      } catch {
-        setErro('Erro ao conectar com o Chatwoot')
-      } finally {
-        setCarregando(false)
-      }
-    }
-
-    carregar()
-  }, [session, perfil])
-
-  function trocarConta(novaContaId: number) {
-    setContaSelecionada(novaContaId)
-    // Após SSO inicial, navega dentro do mesmo iframe autenticado
-    setIframeSrc(`${CHATWOOT_URL}/app/accounts/${novaContaId}/conversations`)
+  function abrirAtendimento() {
+    window.open('/api/chatwoot/redirect', '_blank', 'noopener,noreferrer')
   }
-
-  if (carregando) {
-    return (
-      <div className="flex items-center justify-center h-full bg-escuro-600">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-dourado-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-escuro-300 text-sm">Conectando ao Chatwoot...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (erro) {
-    return (
-      <div className="flex items-center justify-center h-full bg-escuro-600">
-        <div className="text-center max-w-sm">
-          <div className="w-12 h-12 rounded-full bg-red-900/30 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <p className="text-red-400 font-medium mb-1">{erro}</p>
-          <p className="text-escuro-300 text-sm">Contate o administrador para configurar o acesso ao Chatwoot.</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!iframeSrc) return null
 
   return (
-    <div className="flex flex-col h-full">
-      {perfil === 'MASTER' && contas.length > 1 && (
-        <div className="flex items-center gap-3 px-4 py-2 bg-escuro-700 border-b border-escuro-500 flex-shrink-0">
-          <svg className="w-4 h-4 text-escuro-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+    <div className="flex items-center justify-center h-full bg-escuro-600">
+      <div className="text-center max-w-md px-6">
+        <div className="w-16 h-16 rounded-full bg-dourado-400/10 flex items-center justify-center mx-auto mb-6">
+          <svg className="w-8 h-8 text-dourado-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
-          <span className="text-xs text-escuro-300">Conta:</span>
-          <select
-            value={contaSelecionada ?? ''}
-            onChange={e => trocarConta(Number(e.target.value))}
-            className="text-xs bg-escuro-600 border border-escuro-500 text-white rounded px-2 py-1 focus:outline-none focus:border-dourado-400 cursor-pointer"
-          >
-            {contas.map(c => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
-          </select>
         </div>
-      )}
-      <iframe
-        key={iframeKey}
-        src={iframeSrc}
-        className="flex-1 w-full border-0"
-        allow="clipboard-read; clipboard-write; microphone"
-        title="Chatwoot Atendimento"
-      />
+
+        <h2 className="text-white text-xl font-semibold mb-2">Atendimento</h2>
+        <p className="text-escuro-300 text-sm mb-6 leading-relaxed">
+          O módulo de atendimento abre em uma nova aba,<br />
+          já autenticado com a sua conta.
+        </p>
+
+        <button
+          onClick={abrirAtendimento}
+          className="inline-flex items-center gap-2 bg-dourado-400 hover:bg-dourado-400/90 text-escuro-600 font-semibold px-6 py-3 rounded-lg transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+          Abrir Atendimento
+        </button>
+
+        <p className="text-escuro-400 text-xs mt-4">
+          O Chatwoot abrirá com login automático via SSO.
+        </p>
+      </div>
     </div>
   )
 }
