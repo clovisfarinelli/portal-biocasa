@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { registrarLog } from '@/lib/logs'
 import { ipDaRequisicao } from '@/lib/rateLimit'
+import { criarUsuarioChatwoot } from '@/lib/chatwoot'
 
 const schemaCriarUsuario = z.object({
   nome: z.string().min(2),
@@ -110,10 +111,20 @@ export async function POST(req: NextRequest) {
     include: { unidade: true },
   })
 
+  // Criar no Chatwoot e salvar IDs — falha silenciosa se Chatwoot indisponível
+  const cwDados = await criarUsuarioChatwoot(novoUsuario.nome, novoUsuario.email, novoUsuario.perfil)
+  if (cwDados) {
+    await prisma.usuario.update({
+      where: { id: novoUsuario.id },
+      data: cwDados,
+    })
+    Object.assign(novoUsuario, cwDados)
+  }
+
   await registrarLog({
     acao: 'usuario_criado',
     usuarioId: operador.id,
-    detalhes: `novoUsuarioId: ${novoUsuario.id}, perfil: ${novoUsuario.perfil}`,
+    detalhes: `novoUsuarioId: ${novoUsuario.id}, perfil: ${novoUsuario.perfil}, chatwootUserId: ${cwDados?.chatwootUserId ?? 'não criado'}`,
     ip: ipDaRequisicao(req),
   })
 
