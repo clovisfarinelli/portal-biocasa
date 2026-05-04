@@ -143,26 +143,75 @@ MASTER já vê tudo de todas as unidades por design.
 
 ---
 
-## SESSÃO 5 — ERPNext no Portal
+## SESSÃO 5 — Dashboard MASTER Unificado (refatoração + auditoria)
+**Prioridade: ALTA — próxima sessão a executar**
+
+### Conceito
+O Dashboard vira o painel de controle completo do MASTER.
+A sidebar perde o item "Usuários" — tudo administrativo fica no Dashboard.
+
+### 5.1 — Refatorar layout do Dashboard
+- Transformar `/consolidado` em painel com 4 abas/seções:
+  - **Métricas** (já existe — manter)
+  - **Usuários** (mover gestão de usuários para cá)
+  - **Auditoria** (novo)
+  - **Configurações** (novo)
+- Remover item "Usuários" da sidebar para perfil MASTER
+
+### 5.2 — Tabela de logs de auditoria
+- Nova tabela `logs` no banco: `userId`, `acao`, `recurso`, `detalhe`, `ip`, `createdAt`
+- Registrar automaticamente: login, logout, análise gerada, imóvel criado/editado,
+  usuário convidado/desativado, exportações
+- Retenção: 12 meses
+
+### 5.3 — Aba Auditoria no Dashboard
+- Timeline de ações recentes (todas as unidades)
+- Filtros: por usuário, unidade, tipo de ação, período
+- Destaque visual para ações sensíveis (exportação, acesso a dados)
+- Alerta visual quando volume anormal detectado
+
+### 5.4 — Alertas de segurança por email
+- Email para MASTER quando:
+  - Tentativas de login falhas repetidas (3+)
+  - Volume anormal de exportações (5+ em 1 hora)
+  - Login fora do horário comercial (configurável)
+  - Usuário acessa dados de IP diferente do habitual
+
+### 5.5 — Aba Configurações no Dashboard
+- Limites de análises por unidade
+- Configurações gerais do sistema
+- Parâmetros do Chatwoot
+
+### 5.6 — Marca d'água em exportações
+- PDFs de análises com nome do usuário + timestamp + marca Biocasa
+- Identifica origem em caso de vazamento
+
+---
+
+## SESSÃO 6 — (a definir após Sessão 5)
+
+---
+
+## SESSÃO 7 — ERPNext no Portal
 **Prioridade: MÉDIA — executar após as demais unidades estarem integradas**
 
-### 5.1 Sidebar e roteamento
+### 7.1 Sidebar e roteamento
 - Adicionar item "Financeiro" na sidebar
 - Visível para: MASTER e PROPRIETARIO
 - Rota /dashboard/financeiro
 
-### 5.2 SSO com ERPNext
+### 7.2 SSO com ERPNext
 - ERPNext suporta OAuth/Social Login
 - Mesmo padrão do Chatwoot: token → iframe autenticado
 - Cada usuário mapeado para a Empresa da sua unidade no ERPNext
 
-### 5.3 Uma Empresa por unidade no ERPNext
+### 7.3 Uma Empresa por unidade no ERPNext
 - Plano de contas padrão Biocasa replicado para cada empresa nova
 - MASTER tem acesso a todas as Empresas no ERPNext
 
 ---
 
-## SESSÃO 6 — Onboarding de Novas Unidades
+## SESSÃO 8 — Onboarding de Novas Unidades
 **Prioridade: MÉDIA — executar quando chegar a 3ª unidade**
 
 ### Checklist de onboarding (processo atual — manual)
@@ -176,7 +225,7 @@ MASTER já vê tudo de todas as unidades por design.
 
 ### Automação futura
 - Formulário no painel MASTER que executa todos os passos acima
-- Avaliar viabilidade após Sessões 1-5 concluídas
+- Avaliar viabilidade após Sessões 1-7 concluídas
 
 ---
 
@@ -186,7 +235,7 @@ MASTER já vê tudo de todas as unidades por design.
 |----------|------|
 | Portal lento com muitas unidades | Migrar PostgreSQL para Supabase/Neon (só troca DATABASE_URL) |
 | VPS2 com RAM acima de 80% | Fazer upgrade de servidor na Hetzner |
-| Nova unidade chegando | Seguir checklist da Sessão 6 |
+| Nova unidade chegando | Seguir checklist da Sessão 8 |
 | Franqueadora pedindo acesso | Criar usuário MASTER para os sócios |
 
 ---
@@ -206,5 +255,7 @@ MASTER já vê tudo de todas as unidades por design.
 | 2 | Chatwoot no Portal | ✅ Concluída |
 | 3 | Dashboard Consolidado (MASTER) | ✅ Concluída |
 | 4 | LGPD e Conformidade | ✅ Concluída |
-| 5 | ERPNext no Portal | ⏳ Pendente |
-| 6 | Onboarding de Novas Unidades | ⏳ Pendente |
+| 5 | Dashboard MASTER Unificado (refatoração + auditoria) | ⏳ Pendente |
+| 6 | (a definir após Sessão 5) | ⏳ Pendente |
+| 7 | ERPNext no Portal | ⏳ Pendente |
+| 8 | Onboarding de Novas Unidades | ⏳ Pendente |
