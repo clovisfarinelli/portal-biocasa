@@ -1182,10 +1182,29 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
       {modoEdicao && imovelId ? (
         <div className="card mb-6">
           <SecaoTitulo>5. Fotos</SecaoTitulo>
-          <p className="text-sm text-escuro-300">
+          <p className="text-sm text-escuro-300 mb-4">
             {fotosAtuais.length} foto{fotosAtuais.length !== 1 ? 's' : ''} cadastrada{fotosAtuais.length !== 1 ? 's' : ''}.
-            {' '}Use o botão "Gerenciar Fotos" abaixo para adicionar, remover ou reordenar.
+            {' '}Adicione, remova ou reordene as fotos pelo gerenciador abaixo.
           </p>
+          <div className="flex flex-wrap gap-3">
+            {fotosAtuais.length > 0 && (
+              <a
+                href={`/api/imoveis/${imovelId}/fotos/zip`}
+                download
+                className="btn-secondary flex items-center gap-2 text-sm"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Baixar Fotos
+              </a>
+            )}
+            <GerenciarFotosModal
+              imovelId={imovelId}
+              fotosIniciais={fotosAtuais}
+              onFotosChange={setFotosAtuais}
+            />
+          </div>
         </div>
       ) : !modoEdicao && (
         <div className="card mb-6 opacity-60">
@@ -1196,10 +1215,10 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
         </div>
       )}
 
-      {/* ─── Botões de ação ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex flex-wrap gap-2">
-          {perfil === 'MASTER' && modoEdicao && (
+      {/* ─── Rodapé: Excluir (esquerda) | Cancelar + Salvar (direita) ───────── */}
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          {['MASTER', 'PROPRIETARIO', 'ESPECIALISTA', 'ASSISTENTE'].includes(perfil) && modoEdicao && (
             <button
               onClick={excluir}
               disabled={excluindo}
@@ -1210,27 +1229,6 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
               </svg>
               {excluindo ? 'Excluindo...' : 'Excluir Imóvel'}
             </button>
-          )}
-          {modoEdicao && imovelId && (
-            <>
-              {fotosAtuais.length > 0 && (
-                <a
-                  href={`/api/imoveis/${imovelId}/fotos/zip`}
-                  download
-                  className="btn-secondary flex items-center gap-2 text-sm"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Baixar Fotos
-                </a>
-              )}
-              <GerenciarFotosModal
-                imovelId={imovelId}
-                fotosIniciais={fotosAtuais}
-                onFotosChange={setFotosAtuais}
-              />
-            </>
           )}
         </div>
         <div className="flex gap-3">
@@ -1260,21 +1258,22 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
             )}
           </button>
         </div>
-
-        {modoEdicao && (
-          <div className="flex justify-start pt-4 border-t border-escuro-600">
-            <button
-              onClick={() => router.back()}
-              className="btn-secondary flex items-center gap-2 text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Voltar
-            </button>
-          </div>
-        )}
       </div>
+
+      {/* ← Voltar — abaixo do rodapé, dentro do enquadramento da página */}
+      {modoEdicao && (
+        <div className="mt-3">
+          <button
+            onClick={() => router.back()}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Voltar
+          </button>
+        </div>
+      )}
     </div>
   )
 }

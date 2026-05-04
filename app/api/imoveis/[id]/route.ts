@@ -164,8 +164,17 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   const usuario = session.user as any
 
+  const PERFIS_EXCLUSAO = ['MASTER', 'PROPRIETARIO', 'ESPECIALISTA', 'ASSISTENTE']
+  if (!PERFIS_EXCLUSAO.includes(usuario.perfil)) {
+    return NextResponse.json({ erro: 'Sem permissão para excluir imóveis' }, { status: 403 })
+  }
+
+  // Não-MASTER só pode excluir da própria unidade
   if (usuario.perfil !== 'MASTER') {
-    return NextResponse.json({ erro: 'Apenas MASTER pode excluir imóveis' }, { status: 403 })
+    const imovelVerif = await prisma.imovel.findUnique({ where: { id: params.id }, select: { unidadeId: true } })
+    if (imovelVerif && imovelVerif.unidadeId !== usuario.unidadeId) {
+      return NextResponse.json({ erro: 'Sem permissão para excluir este imóvel' }, { status: 403 })
+    }
   }
 
   const imovel = await prisma.imovel.findUnique({ where: { id: params.id } })
