@@ -1,7 +1,8 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM   = process.env.RESEND_FROM ?? 'onboarding@resend.dev'
+const [resendApiKey, resendFrom] = (process.env.RESEND_CONFIG ?? '|').split('|')
+const resend = new Resend(resendApiKey || undefined)
+const FROM   = resendFrom || 'onboarding@resend.dev'
 
 function htmlConvite(nome: string, url: string): string {
   return `<!DOCTYPE html>
@@ -57,8 +58,8 @@ function htmlConvite(nome: string, url: string): string {
 }
 
 export async function enviarConvite(nome: string, email: string, url: string): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn('[email] RESEND_API_KEY não configurado — email não enviado')
+  if (!resendApiKey) {
+    console.warn('[email] RESEND_CONFIG não configurado — email não enviado')
     return false
   }
   try {
