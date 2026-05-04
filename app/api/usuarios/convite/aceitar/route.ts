@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
-import { criarUsuarioChatwoot } from '@/lib/chatwoot'
+import { criarUsuarioChatwoot, atualizarSenhaChatwoot } from '@/lib/chatwoot'
 
 const schema = z.object({
   token: z.string().uuid(),
@@ -38,12 +38,21 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // Criar no Chatwoot apenas se ainda não tiver conta (falha silenciosa)
-  if (!usuario.chatwootUserId) {
+  // Chatwoot: criar conta se ainda não existir, depois sincronizar senha
+  let chatwootUserId = usuario.chatwootUserId ?? null
+
+  if (!chatwootUserId) {
     const cwDados = await criarUsuarioChatwoot(usuario.nome, usuario.email, usuario.perfil)
     if (cwDados) {
       await prisma.usuario.update({ where: { id: usuario.id }, data: cwDados })
+      chatwootUserId = cwDados.chatwootUserId
     }
+  }
+
+  if (chatwootUserId) {
+    await atualizarSenhaChatwoot(chatwootUserId, senha).catch(
+      err => console.error('[convite/aceitar] sync senha chatwoot falhou:', err)
+    )
   }
 
   return NextResponse.json({ ok: true, email: usuario.email })

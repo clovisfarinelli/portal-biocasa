@@ -80,6 +80,21 @@ export async function criarUsuarioChatwoot(
   }
 }
 
+export async function atualizarSenhaChatwoot(chatwootUserId: number, senha: string): Promise<void> {
+  const platformToken = process.env.CHATWOOT_PLATFORM_TOKEN
+  if (!platformToken) return
+
+  const resp = await fetch(`${CHATWOOT_URL}/platform/api/v1/users/${chatwootUserId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', api_access_token: platformToken },
+    body: JSON.stringify({ password: senha, password_confirmation: senha }),
+  })
+
+  if (!resp.ok) {
+    console.error('[chatwoot] atualizar senha falhou:', resp.status, await resp.text())
+  }
+}
+
 export async function desassociarUsuarioChatwoot(
   chatwootUserId: number,
   accountId: number = CHATWOOT_ACCOUNT_ID,

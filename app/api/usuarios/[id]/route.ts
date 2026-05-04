@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
-import { desassociarUsuarioChatwoot } from '@/lib/chatwoot'
+import { desassociarUsuarioChatwoot, atualizarSenhaChatwoot } from '@/lib/chatwoot'
 import { registrarLog } from '@/lib/logs'
 import { ipDaRequisicao } from '@/lib/rateLimit'
 
@@ -50,6 +50,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data,
     include: { unidade: true },
   })
+
+  // Sincronizar nova senha com Chatwoot se o usuário tiver conta lá
+  if (dados.senha && usuario.chatwootUserId) {
+    await atualizarSenhaChatwoot(usuario.chatwootUserId, dados.senha).catch(
+      err => console.error('[patch usuario] sync senha chatwoot falhou:', err)
+    )
+  }
 
   return NextResponse.json(usuario)
 }
