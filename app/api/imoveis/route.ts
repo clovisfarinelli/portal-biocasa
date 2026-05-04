@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { registrarLog } from '@/lib/logs'
+import { ipDaRequisicao } from '@/lib/rateLimit'
 
 // Perfis com acesso ao módulo de imóveis
 const PERFIS_IMOVEIS = ['MASTER', 'PROPRIETARIO', 'ASSISTENTE', 'CORRETOR']
@@ -250,6 +252,13 @@ export async function POST(req: NextRequest) {
         linkSite,
       },
       include: { unidade: { select: { nome: true } } },
+    })
+    await registrarLog({
+      acao: 'imovel_criado',
+      recurso: 'imovel',
+      usuarioId: usuario.id,
+      detalhes: `codigoRef: ${imovel.codigoRef}, unidade: ${imovel.unidade?.nome ?? unidadeId}`,
+      ip: ipDaRequisicao(req),
     })
     return NextResponse.json(imovel, { status: 201 })
   } catch (err: any) {

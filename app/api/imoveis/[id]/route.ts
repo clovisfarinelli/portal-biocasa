@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { registrarLog } from '@/lib/logs'
+import { ipDaRequisicao } from '@/lib/rateLimit'
 
 const PERFIS_LEITURA = ['MASTER', 'PROPRIETARIO', 'ASSISTENTE', 'CORRETOR']
 const PERFIS_ESCRITA = ['MASTER', 'PROPRIETARIO', 'ASSISTENTE']
@@ -130,6 +132,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       data: dados,
       include: { unidade: { select: { id: true, nome: true } } },
     })
+    await registrarLog({
+      acao: 'imovel_editado',
+      recurso: 'imovel',
+      usuarioId: usuario.id,
+      detalhes: `imovelId: ${params.id}, codigoRef: ${imovel.codigoRef}`,
+      ip: ipDaRequisicao(req),
+    })
     return NextResponse.json(atualizado)
   } catch (err: any) {
     await logErro(usuario.id, `[imoveis/${params.id}/PUT] Erro ao atualizar`, err?.message)
@@ -152,6 +161,13 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   try {
     await prisma.imovel.delete({ where: { id: params.id } })
+    await registrarLog({
+      acao: 'imovel_excluido',
+      recurso: 'imovel',
+      usuarioId: usuario.id,
+      detalhes: `imovelId: ${params.id}, codigoRef: ${imovel.codigoRef}`,
+      ip: ipDaRequisicao(req),
+    })
     return NextResponse.json({ mensagem: 'Imóvel excluído com sucesso' })
   } catch (err: any) {
     await logErro(usuario.id, `[imoveis/${params.id}/DELETE] Erro ao excluir`, err?.message)

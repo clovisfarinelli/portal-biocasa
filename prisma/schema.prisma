@@ -200,6 +200,7 @@ model LogAcesso {
   id        String   @id @default(cuid())
   usuarioId String?
   acao      String
+  recurso   String?
   detalhes  String?  @db.Text
   ip        String?
   criadoEm DateTime @default(now())

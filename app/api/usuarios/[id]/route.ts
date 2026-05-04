@@ -58,6 +58,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     )
   }
 
+  // Log de reativação
+  if (dados.ativo === true) {
+    await registrarLog({
+      acao: 'usuario_reativado',
+      recurso: 'usuario',
+      usuarioId: operador.id,
+      detalhes: `alvoId: ${params.id}, nome: ${usuario.nome}`,
+      ip: ipDaRequisicao(req),
+    })
+  }
+
   return NextResponse.json(usuario)
 }
 
