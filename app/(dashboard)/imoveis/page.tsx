@@ -83,7 +83,6 @@ function ImoveisContent() {
   const [pagina, setPagina] = useState(() => Math.max(1, Number(searchParams.get('pagina') ?? '1')))
   const [carregando, setCarregando] = useState(true)
   const [excluindoId, setExcluindoId] = useState<string | null>(null)
-  const [duplicandoId, setDuplicandoId] = useState<string | null>(null)
 
   // Filtros — inicializados da URL para preservar estado ao voltar
   const [busca, setBusca] = useState(() => searchParams.get('busca') ?? '')
@@ -184,23 +183,6 @@ function ImoveisContent() {
     setPagina(novaPagina)
     const qs = buildFiltroParams(filtrosAtivos, novaPagina)
     router.replace(`/imoveis${qs ? '?' + qs : ''}`, { scroll: false })
-  }
-
-  async function duplicar(id: string, codigo: string) {
-    if (!confirm(`Duplicar o imóvel ${codigo}? Uma cópia será criada sem fotos.`)) return
-    setDuplicandoId(id)
-    try {
-      const res = await fetch(`/api/imoveis/${id}/duplicar`, { method: 'POST' })
-      if (res.ok) {
-        const data = await res.json()
-        router.push(`/imoveis/${data.id}`)
-      } else {
-        const data = await res.json()
-        alert(data.erro ?? 'Erro ao duplicar imóvel')
-      }
-    } finally {
-      setDuplicandoId(null)
-    }
   }
 
   async function excluir(id: string, codigo: string) {
@@ -473,25 +455,6 @@ function ImoveisContent() {
                           >
                             Editar
                           </Link>
-                        )}
-                        {podeEscrever && (
-                          <button
-                            onClick={() => duplicar(imovel.id, imovel.codigoRef)}
-                            disabled={duplicandoId === imovel.id}
-                            className="py-1 px-2 rounded-lg bg-escuro-700 hover:bg-escuro-600 border border-escuro-400 text-escuro-100 hover:text-white transition-colors disabled:opacity-50"
-                            title="Duplicar"
-                          >
-                            {duplicandoId === imovel.id ? (
-                              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                              </svg>
-                            ) : (
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
-                              </svg>
-                            )}
-                          </button>
                         )}
                         {podeExcluir && (
                           <button

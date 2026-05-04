@@ -7,6 +7,7 @@ import GaleriaFotos from '@/components/imoveis/GaleriaFotos'
 import CopiarFichaButton from '@/components/imoveis/CopiarFichaButton'
 import CopiarTextoButton from '@/components/imoveis/CopiarTextoButton'
 import CompartilharButton from '@/components/imoveis/CompartilharButton'
+import DuplicarButton from '@/components/imoveis/DuplicarButton'
 import { formatarMoeda } from '@/lib/utils'
 
 const LABEL_TIPO: Record<string, string> = {
@@ -129,7 +130,7 @@ export default async function VisualizarImovelPage({
     imovel.areaUtil ? `📐 ${imovel.areaUtil}m²${imovel.dormitorios ? ` | ${LABEL_DORMITORIOS[imovel.dormitorios] ?? imovel.dormitorios} dorms` : ''}${imovel.vagasGaragem && imovel.vagasGaragem !== 'SEM_VAGA' ? ` | ${LABEL_VAGAS[imovel.vagasGaragem] ?? imovel.vagasGaragem} vaga(s)` : ''}` : null,
     valorLabel ? `💰 ${valorLabel}` : null,
     `📋 Ref: ${imovel.codigoRef}`,
-    (imovel.linkExterno || imovel.linkSite) ? `🔗 ${imovel.linkExterno ?? imovel.linkSite}` : null,
+    (imovel.linkExterno || imovel.slug) ? `🔗 ${imovel.linkExterno ?? `https://imoveis.cf8.com.br/imoveis/${imovel.slug}`}` : null,
   ].filter(Boolean).join('\n')
 
   return (
@@ -177,6 +178,9 @@ export default async function VisualizarImovelPage({
           <CopiarFichaButton texto={fichaWhatsApp} />
           {imovel.slug && (
             <CompartilharButton slug={imovel.slug} />
+          )}
+          {podeEditar && (
+            <DuplicarButton imovelId={imovel.id} codigoRef={imovel.codigoRef} />
           )}
         </div>
       </div>
@@ -254,7 +258,11 @@ export default async function VisualizarImovelPage({
             </span>
           </div>
         ) : null}
-        <Linha label="Link do Site" valor={imovel.linkSite} />
+        {imovel.slug ? (
+          <Linha label="Link do Site" valor={`https://imoveis.cf8.com.br/imoveis/${imovel.slug}`} />
+        ) : imovel.linkSite ? (
+          <Linha label="Link do Site" valor={imovel.linkSite} />
+        ) : null}
         <Linha label="Unidade" valor={imovel.unidade?.nome} />
         <Linha label="Cadastrado em" valor={new Date(imovel.dataCadastro).toLocaleDateString('pt-BR')} />
         {imovel.obsInternas && (
