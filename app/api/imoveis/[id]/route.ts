@@ -103,6 +103,7 @@ const schemaAtualizarImovel = z.object({
   percComissao: z.number().optional().nullable(),
   situacao: z.string().optional(),
   fotos: z.string().optional().nullable(),
+  unidadeId: z.string().optional(),
 }).strict()
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {

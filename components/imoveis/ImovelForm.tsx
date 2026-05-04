@@ -196,6 +196,7 @@ interface FormState {
   obsInternas: string
   percComissao: string
   situacao: string
+  unidadeId: string
 }
 
 const FORM_VAZIO: FormState = {
@@ -215,6 +216,7 @@ const FORM_VAZIO: FormState = {
   linkSite: '', linkExterno: '', codIptu: '', codMatricula: '',
   descricao: '', obsInternas: '', percComissao: '',
   situacao: 'DISPONIVEL',
+  unidadeId: '',
 }
 
 function imovelParaForm(imovel: ImovelCompleto): FormState {
@@ -287,6 +289,7 @@ function imovelParaForm(imovel: ImovelCompleto): FormState {
     obsInternas: imovel.obsInternas ?? '',
     percComissao: imovel.percComissao != null ? String(imovel.percComissao) : '',
     situacao: imovel.situacao,
+    unidadeId: imovel.unidadeId,
   }
 }
 
@@ -393,6 +396,15 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
   const [buscandoCep, setBuscandoCep] = useState(false)
   const [cepMensagem, setCepMensagem] = useState<string | null>(null)
   const ultimoCepBuscadoRef = useRef<string>('')
+  const [unidadesOpcoes, setUnidadesOpcoes] = useState<{ id: string; nome: string }[]>([])
+
+  useEffect(() => {
+    if (perfil !== 'MASTER') return
+    fetch('/api/unidades')
+      .then(r => r.json())
+      .then((lista: { id: string; nome: string }[]) => setUnidadesOpcoes(lista))
+      .catch(() => {})
+  }, [perfil])
 
   // ── Derived flags
   const tiposDisponiveis = form.finalidade === 'RESIDENCIAL' ? TIPOS_RESIDENCIAL : TIPOS_COMERCIAL
@@ -491,6 +503,7 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
   }
 
   function validar(): string | null {
+    if (perfil === 'MASTER' && !form.unidadeId) return 'Unidade é obrigatória'
     if (!form.codigoRef.trim()) return 'Código de referência é obrigatório'
     if (!form.finalidade) return 'Finalidade é obrigatória'
     if (!form.tipo) return 'Tipo é obrigatório'
@@ -568,6 +581,7 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
       obsInternas: form.obsInternas.trim() || undefined,
       percComissao: n(form.percComissao),
       situacao: form.situacao,
+      ...(perfil === 'MASTER' && form.unidadeId ? { unidadeId: form.unidadeId } : {}),
     }
   }
 
@@ -686,6 +700,22 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
       {/* ─── Seção 1: Dados Comerciais ─────────────────────────────────────── */}
       <div className="card mb-6">
         <SecaoTitulo>1. Dados Comerciais</SecaoTitulo>
+
+        {perfil === 'MASTER' && (
+          <div className="mb-4">
+            <Label required>Unidade</Label>
+            <Select
+              value={form.unidadeId}
+              onChange={e => set('unidadeId', e.target.value)}
+              className="max-w-xs"
+            >
+              <option value="">— Selecione a unidade —</option>
+              {unidadesOpcoes.map(u => (
+                <option key={u.id} value={u.id}>{u.nome}</option>
+              ))}
+            </Select>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
