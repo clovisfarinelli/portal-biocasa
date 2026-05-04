@@ -11,6 +11,12 @@ function roleChatwoot(perfil: string): 'administrator' | 'agent' {
   return ['MASTER', 'PROPRIETARIO'].includes(perfil) ? 'administrator' : 'agent'
 }
 
+function customRoleChatwoot(perfil: string): number | undefined {
+  if (perfil === 'ASSISTENTE') return 1
+  if (perfil === 'CORRETOR')   return 2
+  return undefined
+}
+
 export async function criarUsuarioChatwoot(
   nome: string,
   email: string,
@@ -19,8 +25,9 @@ export async function criarUsuarioChatwoot(
   const platformToken = process.env.CHATWOOT_PLATFORM_TOKEN
   if (!platformToken) return null
 
-  const role  = roleChatwoot(perfil)
-  const senha = `Cw${crypto.randomUUID().replace(/-/g, '')}!`
+  const role       = roleChatwoot(perfil)
+  const customRole = customRoleChatwoot(perfil)
+  const senha      = `Cw${crypto.randomUUID().replace(/-/g, '')}!`
 
   const createResp = await fetch(`${CHATWOOT_URL}/platform/api/v1/users`, {
     method: 'POST',
@@ -35,7 +42,7 @@ export async function criarUsuarioChatwoot(
 
   const cwUser = await createResp.json()
 
-  // Associar à conta via API de conta (requer token de admin da conta, não o platform token)
+  // Associar à conta e aplicar custom_role via API de conta
   const accountToken = process.env.CHATWOOT_ACCOUNT_TOKEN
   if (accountToken) {
     const assocResp = await fetch(
@@ -43,13 +50,24 @@ export async function criarUsuarioChatwoot(
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', api_access_token: accountToken },
-        body: JSON.stringify({ email: email, name: nome, role }),
+        body: JSON.stringify({ email, name: nome, role }),
       },
     ).catch((err) => { console.error('[chatwoot] associar conta falhou:', err); return null })
 
     if (assocResp && !assocResp.ok) {
-      const txt = await assocResp.text()
-      console.error('[chatwoot] associar conta falhou:', assocResp.status, txt)
+      console.error('[chatwoot] associar conta falhou:', assocResp.status, await assocResp.text())
+    }
+
+    // Aplicar custom_role_id para ASSISTENTE e CORRETOR
+    if (customRole !== undefined) {
+      await fetch(
+        `${CHATWOOT_URL}/api/v1/accounts/${CHATWOOT_ACCOUNT_ID}/agents/${cwUser.id}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', api_access_token: accountToken },
+          body: JSON.stringify({ custom_role_id: customRole }),
+        },
+      ).catch((err) => console.error('[chatwoot] custom_role falhou:', err))
     }
   } else {
     console.warn('[chatwoot] CHATWOOT_ACCOUNT_TOKEN não configurado — usuário criado sem associação de conta')
