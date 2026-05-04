@@ -670,7 +670,7 @@ export default function UserManagement({ session }: { session: Session }) {
               </div>
               <div>
                 <label className="label">Email</label>
-                <input type="email" value={formUsuario.email} onChange={e => setFormUsuario(f => ({ ...f, email: e.target.value }))} className="input-field" placeholder="email@exemplo.com" />
+                <input type="email" value={formUsuario.email} onChange={e => setFormUsuario(f => ({ ...f, email: e.target.value }))} className="input-field" placeholder="email@exemplo.com" autoComplete="off" />
               </div>
               <div>
                 <label className="label">
@@ -679,7 +679,7 @@ export default function UserManagement({ session }: { session: Session }) {
                     <span className="ml-2 text-xs text-escuro-300 font-normal">— deixe em branco para enviar convite por email</span>
                   )}
                 </label>
-                <input type="password" value={formUsuario.senha} onChange={e => setFormUsuario(f => ({ ...f, senha: e.target.value }))} className="input-field" placeholder={editandoUsuario ? '••••••••' : 'Opcional — deixe em branco para convidar'} />
+                <input type="password" value={formUsuario.senha} onChange={e => setFormUsuario(f => ({ ...f, senha: e.target.value }))} className="input-field" placeholder={editandoUsuario ? '••••••••' : 'Opcional — deixe em branco para convidar'} autoComplete="new-password" />
               </div>
 
               {/* Perfil — MASTER vê todos; PROPRIETARIO vê apenas subordinados */}
@@ -807,11 +807,11 @@ export default function UserManagement({ session }: { session: Session }) {
                   </div>
                   <div>
                     <label className="label">Email do proprietário</label>
-                    <input type="email" value={formUnidade.emailProprietario} onChange={e => setFormUnidade(f => ({ ...f, emailProprietario: e.target.value }))} className="input-field" placeholder="proprietario@biocasa.com.br" />
+                    <input type="email" value={formUnidade.emailProprietario} onChange={e => setFormUnidade(f => ({ ...f, emailProprietario: e.target.value }))} className="input-field" placeholder="proprietario@biocasa.com.br" autoComplete="off" />
                   </div>
                   <div>
                     <label className="label">Senha do proprietário</label>
-                    <input type="password" value={formUnidade.senhaProprietario} onChange={e => setFormUnidade(f => ({ ...f, senhaProprietario: e.target.value }))} className="input-field" placeholder="Mínimo 8 caracteres" />
+                    <input type="password" value={formUnidade.senhaProprietario} onChange={e => setFormUnidade(f => ({ ...f, senhaProprietario: e.target.value }))} className="input-field" placeholder="Mínimo 8 caracteres" autoComplete="new-password" />
                   </div>
                 </>
               )}
