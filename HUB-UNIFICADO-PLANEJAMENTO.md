@@ -114,30 +114,30 @@ MASTER já vê tudo de todas as unidades por design.
 
 ---
 
-## SESSÃO 4 — LGPD e Conformidade
-**Prioridade: MÉDIA — fazer antes de apresentar para a franqueadora**
+## SESSÃO 4 — LGPD e Conformidade ✅ CONCLUÍDA
+**Implementada em: Maio 2026**
 
-### 4.1 Documentos legais
-- Redigir Política de Privacidade
-- Redigir Termos de Uso
-- Publicar no portal (link no footer e na tela de login)
+### 4.1 Documentos legais ✅
+- Política de Privacidade e Termos de Uso redigidos
+- Publicados no portal (footer + tela de login)
 
-### 4.2 Consentimento no primeiro login
+### 4.2 Consentimento no primeiro login ✅
 - Checkbox obrigatório: "Li e aceito a Política de Privacidade"
-- Registrar data e IP do aceite na tabela usuarios
+- Data e IP do aceite registrados na tabela usuarios
 
-### 4.3 Política de retenção de dados
-- Análises: 5 anos
-- Arquivos de upload: 2 anos
-- Logs de acesso: 1 ano
-- Logs de erro: 6 meses
-- Criar rotina de limpeza automática
+### 4.3 Política de retenção de dados ✅
+- Rotina de limpeza automática implementada (cron)
+- Retenção: análises 5 anos, uploads 2 anos, logs_acesso 1 ano, logs_erro 6 meses
 
-### 4.4 Processo de exclusão de dados
-- Rota para MASTER solicitar exclusão de dados de um usuário
-- Processo documentado
+### 4.4 Soft-delete de usuários ✅
+- MASTER pode desativar qualquer usuário (exceto outro MASTER)
+- Campo `ativo = false` no banco — dados preservados para auditoria
+- Chatwoot: desassociação via `DELETE /platform/api/v1/accounts/{id}/account_users`
+- Login com conta desativada → mensagem "Seu acesso foi desativado..."
+- Lista de usuários: mostra só ativos por padrão; botão "Ver desativados" (MASTER)
+- Log de auditoria: ação `usuario_desativado` registrada em `logs_acesso`
 
-### 4.5 Registro de tratamento (interno)
+### 4.5 Registro de tratamento (interno) ✅
 - Documento listando: dados coletados, finalidade, base legal, operadores
 - Operadores: Vercel, Google (Gemini), Hetzner
 
@@ -205,6 +205,6 @@ MASTER já vê tudo de todas as unidades por design.
 | 1 | Segurança Base | ✅ Concluída |
 | 2 | Chatwoot no Portal | ✅ Concluída |
 | 3 | Dashboard Consolidado (MASTER) | ✅ Concluída |
-| 4 | LGPD e Conformidade | ⏳ Pendente |
+| 4 | LGPD e Conformidade | ✅ Concluída |
 | 5 | ERPNext no Portal | ⏳ Pendente |
 | 6 | Onboarding de Novas Unidades | ⏳ Pendente |

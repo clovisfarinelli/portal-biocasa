@@ -392,6 +392,27 @@ export \$(grep -v '^#' .env.local | xargs) && npx prisma db push
 - 2 gráficos de barras CSS (sem dependência externa): análises por mês + custo por mês
 - Filtros: seletor de unidade (aparece quando há mais de 1) + botões de período
 
+## LGPD e Conformidade (Hub Unificado Sessão 4) ✅
+
+### Documentos legais
+- Política de Privacidade e Termos de Uso publicados no portal
+- Link no footer e na tela de login
+
+### Consentimento (Task 4.2)
+- Checkbox obrigatório no primeiro login: "Li e aceito a Política de Privacidade"
+- Campos `consentimentoEm` e `consentimentoIp` na tabela usuarios
+
+### Retenção de dados (Task 4.3)
+- Rotina automática de limpeza (cron): análises 5a, uploads 2a, logs_acesso 1a, logs_erro 6m
+
+### Soft-delete de usuários (Task 4.4)
+- **Regras:** MASTER desativa qualquer usuário exceto outro MASTER
+- **Backend:** `DELETE /api/usuarios/[id]` → `ativo=false` + desassociação Chatwoot + log
+- **Chatwoot:** `desassociarUsuarioChatwoot()` em `lib/chatwoot.ts` → `DELETE /platform/api/v1/accounts/{accountId}/account_users`
+- **Login:** preflight retorna `desativado:true` → mensagem específica na tela de login
+- **UI:** lista de usuários exibe só ativos; botão "Ver desativados" (MASTER)
+- **Auditoria:** ação `usuario_desativado` em `logs_acesso`
+
 ## Integração Chatwoot (Hub Unificado Sessão 2) ✅
 
 ### Solução final: iframe com SSO via Platform API
