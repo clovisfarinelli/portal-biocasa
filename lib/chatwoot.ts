@@ -35,12 +35,25 @@ export async function criarUsuarioChatwoot(
 
   const cwUser = await createResp.json()
 
-  // Associar à conta (ignora falha — usuário já existe no Chatwoot)
-  await fetch(`${CHATWOOT_URL}/platform/api/v1/accounts/${CHATWOOT_ACCOUNT_ID}/account_users`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', api_access_token: platformToken },
-    body: JSON.stringify({ user_id: cwUser.id, role }),
-  }).catch((err) => console.error('[chatwoot] associar conta falhou:', err))
+  // Associar à conta via API de conta (requer token de admin da conta, não o platform token)
+  const accountToken = process.env.CHATWOOT_ACCOUNT_TOKEN
+  if (accountToken) {
+    const assocResp = await fetch(
+      `${CHATWOOT_URL}/api/v1/accounts/${CHATWOOT_ACCOUNT_ID}/agents`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', api_access_token: accountToken },
+        body: JSON.stringify({ email: email, name: nome, role }),
+      },
+    ).catch((err) => { console.error('[chatwoot] associar conta falhou:', err); return null })
+
+    if (assocResp && !assocResp.ok) {
+      const txt = await assocResp.text()
+      console.error('[chatwoot] associar conta falhou:', assocResp.status, txt)
+    }
+  } else {
+    console.warn('[chatwoot] CHATWOOT_ACCOUNT_TOKEN não configurado — usuário criado sem associação de conta')
+  }
 
   return {
     chatwootUserId:    cwUser.id,
