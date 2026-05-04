@@ -74,7 +74,6 @@ export default function UserManagement({ session }: { session: Session }) {
   const [showModalUsuario, setShowModalUsuario] = useState(false)
   const [editandoUsuario, setEditandoUsuario] = useState<Usuario | null>(null)
   const [erroUsuario, setErroUsuario] = useState('')
-  const [cambioDolar, setCambioDolar] = useState('5.50')
   const [conviteEnviado, setConviteEnviado] = useState<{ email: string; url: string | null } | null>(null)
 
   const [formUsuario, setFormUsuario] = useState({
@@ -132,7 +131,6 @@ export default function UserManagement({ session }: { session: Session }) {
   useEffect(() => {
     carregarUsuarios()
     if (isMaster) {
-      carregarCambio()
       carregarUnidadesSelect()
     }
   }, [])
@@ -154,23 +152,6 @@ export default function UserManagement({ session }: { session: Session }) {
   async function carregarUnidadesSelect() {
     const res = await fetch('/api/unidades')
     if (res.ok) setUnidadesSelect(await res.json())
-  }
-
-  async function carregarCambio() {
-    const res = await fetch('/api/configuracoes')
-    if (res.ok) {
-      const data = await res.json()
-      setCambioDolar(data.cambio_dolar_real ?? '5.50')
-    }
-  }
-
-  async function salvarCambio() {
-    await fetch('/api/configuracoes', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cambio_dolar_real: cambioDolar }),
-    })
-    alert('Câmbio atualizado com sucesso!')
   }
 
   async function salvarUsuario() {
@@ -370,26 +351,6 @@ export default function UserManagement({ session }: { session: Session }) {
               {a === 'usuarios' ? 'Usuários' : 'Unidades'}
             </button>
           ))}
-        </div>
-      )}
-
-      {/* Câmbio (MASTER, aba usuários) */}
-      {isMaster && aba === 'usuarios' && (
-        <div className="card mb-6">
-          <h2 className="text-sm font-semibold text-dourado-300 uppercase tracking-wider mb-4">Configurações do Sistema</h2>
-          <div className="flex items-end gap-4">
-            <div>
-              <label className="label">Câmbio Dólar / Real (R$)</label>
-              <input
-                type="number"
-                value={cambioDolar}
-                onChange={e => setCambioDolar(e.target.value)}
-                className="input-field w-40"
-                step="0.01" min="1"
-              />
-            </div>
-            <button onClick={salvarCambio} className="btn-primary px-5 py-2.5">Salvar Câmbio</button>
-          </div>
         </div>
       )}
 
