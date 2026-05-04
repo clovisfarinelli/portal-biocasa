@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import DashboardConsolidado from '@/components/DashboardConsolidado'
 import UserManagement from '@/components/UserManagement'
 import AbaAuditoria from '@/components/AbaAuditoria'
+import AbaConfiguracoes from '@/components/AbaConfiguracoes'
 
 type Aba = 'metricas' | 'usuarios' | 'auditoria' | 'configuracoes'
 
@@ -107,12 +108,7 @@ function DashboardMasterInner() {
         {abaAtual === 'metricas'      && <DashboardConsolidado />}
         {abaAtual === 'usuarios'      && <UserManagement session={session} />}
         {abaAtual === 'auditoria'     && <AbaAuditoria />}
-        {abaAtual === 'configuracoes' && (
-          <AbaEmBreve
-            titulo="Configurações"
-            descricao="Configurações centralizadas do sistema — câmbio, limites de análises, parâmetros Chatwoot. Disponível na Tarefa 5.5."
-          />
-        )}
+        {abaAtual === 'configuracoes' && <AbaConfiguracoes />}
       </div>
     </div>
   )
