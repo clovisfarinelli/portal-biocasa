@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { registrarLog } from '@/lib/logs'
 import { verify as totpVerify, generateSecret as totpGenerateSecret } from 'otplib'
+import { verificarLoginForaHorario } from '@/lib/alertas'
 
 const GRACE_PERIOD_MS = 24 * 60 * 60 * 1000 // 24 horas
 
@@ -69,7 +70,12 @@ export const authOptions: NextAuthOptions = {
   ],
   events: {
     async signIn({ user }) {
-      await registrarLog({ acao: 'login', usuarioId: user.id })
+      await registrarLog({ acao: 'login', recurso: 'sessao', usuarioId: user.id })
+      verificarLoginForaHorario({
+        nome:   user.name  ?? '',
+        email:  user.email ?? '',
+        perfil: (user as any).perfil ?? '',
+      }).catch(console.error)
     },
   },
   callbacks: {

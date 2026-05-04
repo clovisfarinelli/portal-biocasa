@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 
 export type AcaoLog =
   | 'login'
+  | 'login_falhou'
   | 'logout'
   | 'analise_criada'
   | 'arquivo_enviado'

@@ -17,6 +17,13 @@ export default function ExportarPDF({ mensagens, analiseId }: Props) {
 
   async function exportarPDF() {
     setGerando(true)
+    // Registra exportação para auditoria e alertas de segurança (fire-and-forget)
+    fetch('/api/logs/exportacao', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ analiseId }),
+    }).catch(() => {})
+
     try {
       // Gera HTML formatado e usa a API de impressão do browser
       const conteudo = mensagens

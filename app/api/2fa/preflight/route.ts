@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { registrarLog } from '@/lib/logs'
+import { ipDaRequisicao } from '@/lib/rateLimit'
+import { verificarLoginFalhou } from '@/lib/alertas'
 
 // Verifica se o usuário existe, se a senha está certa e se precisa de TOTP.
 // Não cria sessão — apenas informa o frontend para mostrar o campo TOTP.
@@ -12,6 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, totpRequired: false })
     }
 
+    const ip = ipDaRequisicao(req)
     const usuario = await prisma.usuario.findUnique({ where: { email } })
 
     // Hash dummy para evitar timing attack quando o usuário não existe
@@ -21,6 +25,8 @@ export async function POST(req: NextRequest) {
     const senhaOk = await bcrypt.compare(password, hashReal)
 
     if (!usuario || !senhaOk) {
+      await registrarLog({ acao: 'login_falhou', detalhes: `email: ${email}`, ip })
+      verificarLoginFalhou(email, ip).catch(console.error)
       return NextResponse.json({ ok: false, totpRequired: false })
     }
 
