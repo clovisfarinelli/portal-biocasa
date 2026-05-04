@@ -7,7 +7,6 @@ import GaleriaFotos from '@/components/imoveis/GaleriaFotos'
 import CopiarFichaButton from '@/components/imoveis/CopiarFichaButton'
 import CopiarTextoButton from '@/components/imoveis/CopiarTextoButton'
 import CompartilharButton from '@/components/imoveis/CompartilharButton'
-import DuplicarButton from '@/components/imoveis/DuplicarButton'
 import { formatarMoeda } from '@/lib/utils'
 
 const LABEL_TIPO: Record<string, string> = {
@@ -176,10 +175,7 @@ export default async function VisualizarImovelPage({
             </a>
           )}
           <CopiarFichaButton texto={fichaWhatsApp} />
-          {podeEditar && (
-            <DuplicarButton imovelId={imovel.id} codigoRef={imovel.codigoRef} />
-          )}
-          {imovel.publicarSite && imovel.slug && (
+          {imovel.slug && (
             <CompartilharButton slug={imovel.slug} />
           )}
         </div>

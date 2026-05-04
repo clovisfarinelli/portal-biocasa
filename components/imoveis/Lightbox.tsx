@@ -44,7 +44,8 @@ export default function Lightbox({ fotos, indice, onFechar, onNavegar }: Props) 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/92"
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)' }}
       onClick={onFechar}
     >
       {/* Contador */}
