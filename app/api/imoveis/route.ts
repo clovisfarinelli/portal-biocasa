@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { registrarLog } from '@/lib/logs'
 import { ipDaRequisicao } from '@/lib/rateLimit'
+import { gerarSlugImovel } from '@/lib/slug'
 
 // Perfis com acesso ao módulo de imóveis
 const PERFIS_IMOVEIS = ['MASTER', 'PROPRIETARIO', 'ASSISTENTE', 'CORRETOR']
@@ -241,8 +242,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ erro: 'Unidade não definida' }, { status: 400 })
   }
 
-  // Gera link_site baseado no código de referência
   const linkSite = dados.linkSite ?? `/imovel/${dados.codigoRef.toLowerCase()}`
+  const slug = gerarSlugImovel(dados.codigoRef, dados.tipo, dados.bairro, dados.cidade)
 
   try {
     const imovel = await prisma.imovel.create({
@@ -250,6 +251,7 @@ export async function POST(req: NextRequest) {
         ...dados,
         unidadeId,
         linkSite,
+        slug,
       },
       include: { unidade: { select: { nome: true } } },
     })

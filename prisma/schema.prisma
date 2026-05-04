@@ -299,6 +299,9 @@ model Imovel {
   // Mídia — JSON array: [{url, ordem, principal}]
   fotos            String?  @db.Text
 
+  // Slug público (gerado automaticamente)
+  slug             String?  @unique
+
   // Status
   situacao         String   @default("DISPONIVEL")
 

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { registrarLog } from '@/lib/logs'
 import { ipDaRequisicao } from '@/lib/rateLimit'
+import { gerarSlugImovel } from '@/lib/slug'
 
 const PERFIS_LEITURA = ['MASTER', 'PROPRIETARIO', 'ASSISTENTE', 'CORRETOR']
 const PERFIS_ESCRITA = ['MASTER', 'PROPRIETARIO', 'ASSISTENTE']
@@ -127,10 +128,20 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ erro: `Dados inválidos: ${err?.message?.slice(0, 200)}` }, { status: 400 })
   }
 
+  // Gera slug se o imóvel ainda não tiver um
+  const dadosComSlug: typeof dados & { slug?: string } = { ...dados }
+  if (!imovel.slug) {
+    const codigoRef = dados.codigoRef ?? imovel.codigoRef
+    const tipo      = dados.tipo      ?? imovel.tipo
+    const bairro    = dados.bairro    ?? imovel.bairro
+    const cidade    = dados.cidade    ?? imovel.cidade
+    dadosComSlug.slug = gerarSlugImovel(codigoRef, tipo, bairro, cidade)
+  }
+
   try {
     const atualizado = await prisma.imovel.update({
       where: { id: params.id },
-      data: dados,
+      data: dadosComSlug,
       include: { unidade: { select: { id: true, nome: true } } },
     })
     await registrarLog({
