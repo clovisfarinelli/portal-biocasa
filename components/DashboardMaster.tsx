@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import DashboardConsolidado from '@/components/DashboardConsolidado'
 import UserManagement from '@/components/UserManagement'
+import AbaAuditoria from '@/components/AbaAuditoria'
 
 type Aba = 'metricas' | 'usuarios' | 'auditoria' | 'configuracoes'
 
@@ -105,12 +106,7 @@ function DashboardMasterInner() {
       <div className="flex-1 overflow-auto">
         {abaAtual === 'metricas'      && <DashboardConsolidado />}
         {abaAtual === 'usuarios'      && <UserManagement session={session} />}
-        {abaAtual === 'auditoria'     && (
-          <AbaEmBreve
-            titulo="Auditoria"
-            descricao="Timeline de ações e logs de segurança de todas as unidades. Disponível na Tarefa 5.3."
-          />
-        )}
+        {abaAtual === 'auditoria'     && <AbaAuditoria />}
         {abaAtual === 'configuracoes' && (
           <AbaEmBreve
             titulo="Configurações"
