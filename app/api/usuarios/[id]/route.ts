@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
+import { desassociarUsuarioChatwoot } from '@/lib/chatwoot'
+import { registrarLog } from '@/lib/logs'
+import { ipDaRequisicao } from '@/lib/rateLimit'
 
 const schemaAtualizar = z.object({
   nome: z.string().min(2).optional(),
@@ -56,26 +59,39 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
 
   const operador = session.user as any
-  if (['ESPECIALISTA', 'ASSISTENTE', 'CORRETOR'].includes(operador.perfil)) {
+  if (operador.perfil !== 'MASTER') {
     return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 })
   }
 
-  // PROPRIETARIO só pode desativar usuários da sua unidade
-  if (operador.perfil === 'PROPRIETARIO') {
-    const alvo = await prisma.usuario.findUnique({ where: { id: params.id }, select: { unidadeId: true } })
-    if (!alvo || alvo.unidadeId !== operador.unidadeId) {
-      return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 })
-    }
-  }
-
-  // Não pode deletar a si mesmo
   if (operador.id === params.id) {
-    return NextResponse.json({ erro: 'Não é possível excluir sua própria conta' }, { status: 400 })
+    return NextResponse.json({ erro: 'Não é possível desativar sua própria conta' }, { status: 400 })
   }
 
-  await prisma.usuario.update({
+  const alvo = await prisma.usuario.findUnique({
     where: { id: params.id },
-    data: { ativo: false },
+    select: { perfil: true, chatwootUserId: true, chatwootAccountId: true, nome: true },
+  })
+
+  if (!alvo) return NextResponse.json({ erro: 'Usuário não encontrado' }, { status: 404 })
+
+  if (alvo.perfil === 'MASTER') {
+    return NextResponse.json({ erro: 'Não é possível desativar outro usuário MASTER' }, { status: 403 })
+  }
+
+  await prisma.usuario.update({ where: { id: params.id }, data: { ativo: false } })
+
+  if (alvo.chatwootUserId) {
+    await desassociarUsuarioChatwoot(
+      alvo.chatwootUserId,
+      alvo.chatwootAccountId ?? undefined,
+    ).catch(err => console.error('[desativar] chatwoot falhou:', err))
+  }
+
+  await registrarLog({
+    acao: 'usuario_desativado',
+    usuarioId: operador.id,
+    detalhes: `alvoId: ${params.id}, nome: ${alvo.nome}`,
+    ip: ipDaRequisicao(req),
   })
 
   return NextResponse.json({ ok: true })

@@ -1,4 +1,4 @@
-const CHATWOOT_URL    = 'https://atendimento.cf8.com.br'
+const CHATWOOT_URL        = 'https://atendimento.cf8.com.br'
 const CHATWOOT_ACCOUNT_ID = parseInt(process.env.CHATWOOT_ACCOUNT_ID ?? '2', 10)
 
 interface ChatwootUsuario {
@@ -46,5 +46,26 @@ export async function criarUsuarioChatwoot(
     chatwootUserId:    cwUser.id,
     chatwootToken:     cwUser.access_token,
     chatwootAccountId: CHATWOOT_ACCOUNT_ID,
+  }
+}
+
+export async function desassociarUsuarioChatwoot(
+  chatwootUserId: number,
+  accountId: number = CHATWOOT_ACCOUNT_ID,
+): Promise<void> {
+  const platformToken = process.env.CHATWOOT_PLATFORM_TOKEN
+  if (!platformToken) return
+
+  const resp = await fetch(
+    `${CHATWOOT_URL}/platform/api/v1/accounts/${accountId}/account_users`,
+    {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', api_access_token: platformToken },
+      body: JSON.stringify({ user_id: chatwootUserId }),
+    },
+  )
+
+  if (!resp.ok && resp.status !== 404) {
+    console.error('[chatwoot] desassociar falhou:', resp.status, await resp.text())
   }
 }

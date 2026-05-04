@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import LogoBiocasa from '@/components/LogoBiocasa'
 
 type Etapa = 'carregando' | 'form' | 'erro' | 'enviando' | 'sucesso'
 
-export default function ConvitePage() {
+function ConviteForm() {
   const searchParams = useSearchParams()
   const router       = useRouter()
   const token        = searchParams.get('token') ?? ''
@@ -60,7 +60,6 @@ export default function ConvitePage() {
     }
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center bg-escuro-600 px-4">
       <div className="w-full max-w-md">
@@ -162,5 +161,17 @@ export default function ConvitePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ConvitePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-escuro-600">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-dourado-400" />
+      </div>
+    }>
+      <ConviteForm />
+    </Suspense>
   )
 }

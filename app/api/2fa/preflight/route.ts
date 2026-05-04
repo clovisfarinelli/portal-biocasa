@@ -20,8 +20,12 @@ export async function POST(req: NextRequest) {
 
     const senhaOk = await bcrypt.compare(password, hashReal)
 
-    if (!usuario || !usuario.ativo || !senhaOk) {
+    if (!usuario || !senhaOk) {
       return NextResponse.json({ ok: false, totpRequired: false })
+    }
+
+    if (!usuario.ativo) {
+      return NextResponse.json({ ok: false, totpRequired: false, desativado: true })
     }
 
     return NextResponse.json({

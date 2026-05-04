@@ -87,9 +87,11 @@ export default function UserManagement({ session }: { session: Session }) {
   // ── Filtros e ordenação (MASTER) ─────────────────────────────────────────
   const [filtroUnidade, setFiltroUnidade] = useState('')
   const [filtroPerfil, setFiltroPerfil] = useState('')
+  const [mostrarDesativados, setMostrarDesativados] = useState(false)
   const [ordenacao, setOrdenacao] = useState<'perfil' | 'recente' | 'nome' | 'consumo'>('perfil')
 
   const usuariosFiltrados = usuarios
+    .filter(u => mostrarDesativados ? !u.ativo : u.ativo)
     .filter(u => !filtroUnidade || u.unidade?.nome === filtroUnidade || (filtroUnidade === '__sem__' && !u.unidade))
     .filter(u => !filtroPerfil || u.perfil === filtroPerfil)
     .sort((a, b) => {
@@ -414,6 +416,17 @@ export default function UserManagement({ session }: { session: Session }) {
             <option value="consumo">Ordenar: Maior consumo</option>
           </select>
 
+          <button
+            onClick={() => { setMostrarDesativados(v => !v); setFiltroUnidade(''); setFiltroPerfil('') }}
+            className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
+              mostrarDesativados
+                ? 'bg-escuro-400 border-escuro-300 text-white'
+                : 'border-escuro-500 text-escuro-300 hover:text-white hover:border-escuro-400'
+            }`}
+          >
+            {mostrarDesativados ? 'Ver ativos' : 'Ver desativados'}
+          </button>
+
           {(filtroUnidade || filtroPerfil) && (
             <button
               onClick={() => { setFiltroUnidade(''); setFiltroPerfil('') }}
@@ -424,7 +437,7 @@ export default function UserManagement({ session }: { session: Session }) {
           )}
 
           <span className="text-xs text-escuro-300 self-center ml-auto">
-            {usuariosFiltrados.length} de {usuarios.length} usuários
+            {usuariosFiltrados.length} {mostrarDesativados ? 'desativados' : 'ativos'}
           </span>
         </div>
       )}

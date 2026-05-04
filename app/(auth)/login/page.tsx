@@ -37,7 +37,11 @@ export default function LoginPage() {
         const dados = await preflight.json()
 
         if (!dados.ok) {
-          setErro('Email ou senha inválidos.')
+          setErro(
+            dados.desativado
+              ? 'Seu acesso foi desativado. Entre em contato com o administrador.'
+              : 'Email ou senha inválidos.',
+          )
           setCarregando(false)
           return
         }
