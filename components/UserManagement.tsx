@@ -28,6 +28,7 @@ interface Usuario {
   email: string
   perfil: string
   ativo: boolean
+  conviteToken: string | null
   criadoEm: string
   acessoImob: boolean
   acessoIncorp: boolean
@@ -90,8 +91,10 @@ export default function UserManagement({ session }: { session: Session }) {
   const [mostrarDesativados, setMostrarDesativados] = useState(false)
   const [ordenacao, setOrdenacao] = useState<'perfil' | 'recente' | 'nome' | 'consumo'>('perfil')
 
+  const convitePendente = (u: Usuario) => !u.ativo && !!u.conviteToken
+
   const usuariosFiltrados = usuarios
-    .filter(u => mostrarDesativados ? !u.ativo : u.ativo)
+    .filter(u => mostrarDesativados ? (!u.ativo && !u.conviteToken) : (u.ativo || convitePendente(u)))
     .filter(u => !filtroUnidade || u.unidade?.nome === filtroUnidade || (filtroUnidade === '__sem__' && !u.unidade))
     .filter(u => !filtroPerfil || u.perfil === filtroPerfil)
     .sort((a, b) => {
@@ -223,6 +226,15 @@ export default function UserManagement({ session }: { session: Session }) {
         body: JSON.stringify({ ativo: true }),
       })
     }
+    carregarUsuarios()
+  }
+
+  async function reenviarConvite(u: Usuario) {
+    if (!confirm(`Reenviar convite para ${u.email}?`)) return
+    const res  = await fetch(`/api/usuarios/${u.id}/reenviar-convite`, { method: 'POST' })
+    const data = await res.json()
+    if (!res.ok) { alert(data.erro ?? 'Erro ao reenviar convite'); return }
+    setConviteEnviado({ email: u.email, url: data.conviteUrl })
     carregarUsuarios()
   }
 
@@ -499,29 +511,55 @@ export default function UserManagement({ session }: { session: Session }) {
                       <td className="px-4 py-3 text-sm text-right text-white">{u.analisesMes}</td>
                       <td className="px-4 py-3 text-sm text-right text-dourado-400 font-semibold">{formatarMoeda(u.custoMes)}</td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`text-xs px-2 py-1 rounded-full ${u.ativo ? 'bg-green-900/40 text-green-300' : 'bg-escuro-400 text-escuro-200'}`}>
-                          {u.ativo ? 'Ativo' : 'Inativo'}
-                        </span>
+                        {convitePendente(u) ? (
+                          <span className="text-xs px-2 py-1 rounded-full bg-yellow-900/40 text-yellow-300 border border-yellow-700/50 whitespace-nowrap">
+                            Aguardando confirmação
+                          </span>
+                        ) : (
+                          <span className={`text-xs px-2 py-1 rounded-full ${u.ativo ? 'bg-green-900/40 text-green-300' : 'bg-escuro-400 text-escuro-200'}`}>
+                            {u.ativo ? 'Ativo' : 'Inativo'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => abrirEdicaoUsuario(u)} className="p-1.5 rounded hover:bg-escuro-400 text-escuro-200 hover:text-white transition-colors" title="Editar">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => toggleUsuario(u)}
-                            className={`p-1.5 rounded transition-colors ${u.ativo ? 'hover:bg-red-900/30 text-escuro-200 hover:text-red-400' : 'hover:bg-green-900/30 text-escuro-200 hover:text-green-400'}`}
-                            title={u.ativo ? 'Desativar' : 'Reativar'}
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              {u.ativo
-                                ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 115.636 5.636m12.728 12.728L5.636 5.636" />
-                                : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              }
-                            </svg>
-                          </button>
+                          {/* Botão Editar — não aparece para convites pendentes */}
+                          {!convitePendente(u) && (
+                            <button onClick={() => abrirEdicaoUsuario(u)} className="p-1.5 rounded hover:bg-escuro-400 text-escuro-200 hover:text-white transition-colors" title="Editar">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          )}
+
+                          {/* Botão Reenviar convite */}
+                          {convitePendente(u) && (
+                            <button
+                              onClick={() => reenviarConvite(u)}
+                              className="p-1.5 rounded hover:bg-yellow-900/30 text-escuro-200 hover:text-yellow-400 transition-colors"
+                              title="Reenviar convite"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
+                            </button>
+                          )}
+
+                          {/* Botão Desativar/Reativar — oculto para MASTER, self e convite pendente */}
+                          {!convitePendente(u) && u.perfil !== 'MASTER' && u.id !== operador.id && (
+                            <button
+                              onClick={() => toggleUsuario(u)}
+                              className={`p-1.5 rounded transition-colors ${u.ativo ? 'hover:bg-red-900/30 text-escuro-200 hover:text-red-400' : 'hover:bg-green-900/30 text-escuro-200 hover:text-green-400'}`}
+                              title={u.ativo ? 'Desativar' : 'Reativar'}
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                {u.ativo
+                                  ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 115.636 5.636m12.728 12.728L5.636 5.636" />
+                                  : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                }
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
