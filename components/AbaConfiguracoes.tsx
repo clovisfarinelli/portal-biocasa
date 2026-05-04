@@ -33,28 +33,38 @@ function StatusPill({ ativo }: { ativo: boolean }) {
 // ─── seção: configurações gerais ─────────────────────────────────────────────
 
 function SecaoGeral() {
-  const [cambio,     setCambio]     = useState('')
-  const [salvando,   setSalvando]   = useState(false)
-  const [carregando, setCarregando] = useState(true)
-  const [ok,         setOk]         = useState(false)
-  const [erro,       setErro]       = useState('')
+  const [cambio,      setCambio]      = useState('')
+  const [limiteFotos, setLimiteFotos] = useState('')
+  const [salvando,    setSalvando]    = useState(false)
+  const [carregando,  setCarregando]  = useState(true)
+  const [ok,          setOk]          = useState(false)
+  const [erro,        setErro]        = useState('')
 
   useEffect(() => {
     fetch('/api/configuracoes')
       .then(r => r.json())
-      .then(d => { setCambio(d.cambio_dolar_real ?? '5.50'); setCarregando(false) })
+      .then(d => {
+        setCambio(d.cambio_dolar_real ?? '5.50')
+        setLimiteFotos(d.limite_fotos_imovel ?? '20')
+        setCarregando(false)
+      })
       .catch(() => setCarregando(false))
   }, [])
 
   async function salvar() {
-    const valor = parseFloat(cambio.replace(',', '.'))
-    if (isNaN(valor) || valor <= 0) { setErro('Valor inválido'); return }
+    const valorCambio = parseFloat(cambio.replace(',', '.'))
+    const valorLimite = parseInt(limiteFotos)
+    if (isNaN(valorCambio) || valorCambio <= 0) { setErro('Câmbio inválido'); return }
+    if (isNaN(valorLimite) || valorLimite < 1)  { setErro('Limite de fotos inválido'); return }
     setErro(''); setSalvando(true)
     try {
       const res = await fetch('/api/configuracoes', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cambio_dolar_real: String(valor) }),
+        body: JSON.stringify({
+          cambio_dolar_real:    String(valorCambio),
+          limite_fotos_imovel:  String(valorLimite),
+        }),
       })
       if (!res.ok) throw new Error()
       setOk(true)
@@ -79,26 +89,16 @@ function SecaoGeral() {
           {carregando ? (
             <div className="h-9 bg-escuro-500 rounded-lg animate-pulse" />
           ) : (
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-escuro-300 text-sm">R$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={cambio}
-                  onChange={e => { setCambio(e.target.value); setOk(false); setErro('') }}
-                  className="w-full bg-escuro-500 border border-escuro-400 text-white text-sm rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:border-dourado-400"
-                />
-              </div>
-              <button
-                onClick={salvar}
-                disabled={salvando}
-                className="flex items-center gap-2 px-4 py-2 bg-dourado-400 text-escuro-700 text-sm font-medium rounded-lg hover:bg-dourado-300 disabled:opacity-60 transition-colors"
-              >
-                {salvando ? <Spinner /> : null}
-                Salvar
-              </button>
+            <div className="relative w-36">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-escuro-300 text-sm">R$</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={cambio}
+                onChange={e => { setCambio(e.target.value); setOk(false); setErro('') }}
+                className="w-full bg-escuro-500 border border-escuro-400 text-white text-sm rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:border-dourado-400"
+              />
             </div>
           )}
           {erro && <p className="text-red-400 text-xs mt-1">{erro}</p>}
@@ -106,6 +106,38 @@ function SecaoGeral() {
           <p className="text-escuro-400 text-xs mt-2">
             Usado para converter o custo das análises de USD para BRL.
           </p>
+        </div>
+
+        <div>
+          <label className="block text-sm text-escuro-200 mb-1.5">
+            Limite de fotos por imóvel
+          </label>
+          {carregando ? (
+            <div className="h-9 w-32 bg-escuro-500 rounded-lg animate-pulse" />
+          ) : (
+            <input
+              type="number"
+              min="1"
+              max="200"
+              value={limiteFotos}
+              onChange={e => { setLimiteFotos(e.target.value); setOk(false); setErro('') }}
+              className="w-24 bg-escuro-500 border border-escuro-400 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-dourado-400 text-center"
+            />
+          )}
+          <p className="text-escuro-400 text-xs mt-2">
+            Máximo de fotos que podem ser enviadas por imóvel. Padrão: 20.
+          </p>
+        </div>
+
+        <div className="pt-2">
+          <button
+            onClick={salvar}
+            disabled={salvando || carregando}
+            className="flex items-center gap-2 px-4 py-2 bg-dourado-400 text-escuro-700 text-sm font-medium rounded-lg hover:bg-dourado-300 disabled:opacity-60 transition-colors"
+          >
+            {salvando ? <Spinner /> : null}
+            Salvar configurações
+          </button>
         </div>
       </div>
     </div>

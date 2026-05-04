@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { useDropzone } from 'react-dropzone'
+import Lightbox from '@/components/imoveis/Lightbox'
 
 interface FotoItem {
   url: string
@@ -22,6 +23,7 @@ export default function GaleriaFotos({ imovelId, fotosIniciais, readOnly = false
   const [salvandoOrdem, setSalvandoOrdem] = useState(false)
   const [ordemPendente, setOrdemPendente] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [lightboxIndice, setLightboxIndice] = useState<number | null>(null)
   const dragIndexRef = useRef<number | null>(null)
 
   function atualizarFotos(novasFotos: FotoItem[]) {
@@ -194,7 +196,8 @@ export default function GaleriaFotos({ imovelId, fotosIniciais, readOnly = false
               <img
                 src={`/api/imoveis/fotos/download?url=${encodeURIComponent(foto.url)}`}
                 alt={`Foto ${index + 1}`}
-                className="w-full aspect-square object-cover"
+                onClick={() => setLightboxIndice(index)}
+                className="w-full aspect-square object-cover cursor-zoom-in"
               />
 
               {foto.principal && (
@@ -228,6 +231,15 @@ export default function GaleriaFotos({ imovelId, fotosIniciais, readOnly = false
             </div>
           ))}
         </div>
+      )}
+
+      {lightboxIndice !== null && (
+        <Lightbox
+          fotos={fotos}
+          indice={lightboxIndice}
+          onFechar={() => setLightboxIndice(null)}
+          onNavegar={setLightboxIndice}
+        />
       )}
     </div>
   )

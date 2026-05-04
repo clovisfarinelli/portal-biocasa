@@ -85,6 +85,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     })
 
     const fotos = parseFotos(imovel.fotos)
+
+    // Verifica limite configurável (padrão 20)
+    const configLimite = await prisma.configuracao.findUnique({ where: { chave: 'limite_fotos_imovel' } })
+    const limite = configLimite ? parseInt(configLimite.valor) || 20 : 20
+    if (fotos.length >= limite) {
+      return NextResponse.json({ erro: `Limite de ${limite} fotos por imóvel atingido` }, { status: 422 })
+    }
+
     const novaFoto: FotoItem = {
       url: blob.url,
       ordem: fotos.length,
