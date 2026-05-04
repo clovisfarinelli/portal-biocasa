@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
+import { criarUsuarioChatwoot } from '@/lib/chatwoot'
 
 const schema = z.object({
   token: z.string().uuid(),
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
 
   const usuario = await prisma.usuario.findUnique({
     where: { conviteToken: token },
-    select: { id: true, email: true, conviteExpiraEm: true },
+    select: { id: true, nome: true, email: true, perfil: true, conviteExpiraEm: true, chatwootUserId: true },
   })
 
   if (!usuario) {
@@ -36,6 +37,14 @@ export async function POST(req: NextRequest) {
       conviteExpiraEm: null,
     },
   })
+
+  // Criar no Chatwoot apenas se ainda não tiver conta (falha silenciosa)
+  if (!usuario.chatwootUserId) {
+    const cwDados = await criarUsuarioChatwoot(usuario.nome, usuario.email, usuario.perfil)
+    if (cwDados) {
+      await prisma.usuario.update({ where: { id: usuario.id }, data: cwDados })
+    }
+  }
 
   return NextResponse.json({ ok: true, email: usuario.email })
 }

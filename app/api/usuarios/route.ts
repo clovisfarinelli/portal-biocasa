@@ -120,11 +120,14 @@ export async function POST(req: NextRequest) {
     include: { unidade: true },
   })
 
-  // Criar no Chatwoot e salvar IDs — falha silenciosa se Chatwoot indisponível
-  const cwDados = await criarUsuarioChatwoot(novoUsuario.nome, novoUsuario.email, novoUsuario.perfil)
-  if (cwDados) {
-    await prisma.usuario.update({ where: { id: novoUsuario.id }, data: cwDados })
-    Object.assign(novoUsuario, cwDados)
+  // Criar no Chatwoot apenas para usuários com senha (ativos imediatamente)
+  // Usuários de convite terão conta criada ao aceitar o convite
+  if (!convite) {
+    const cwDados = await criarUsuarioChatwoot(novoUsuario.nome, novoUsuario.email, novoUsuario.perfil)
+    if (cwDados) {
+      await prisma.usuario.update({ where: { id: novoUsuario.id }, data: cwDados })
+      Object.assign(novoUsuario, cwDados)
+    }
   }
 
   let conviteUrl: string | null = null
