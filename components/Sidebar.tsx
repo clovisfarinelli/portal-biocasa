@@ -9,14 +9,14 @@ import LogoBiocasa from './LogoBiocasa'
 
 type Modulo = 'INCORP' | 'IMOB' | 'USUARIOS'
 
-function rotaParaModulo(pathname: string): Modulo | null {
+function rotaParaModulo(pathname: string, perfil: string): Modulo | null {
   if (
     pathname.startsWith('/chat') ||
     pathname.startsWith('/treinar-ia') ||
     pathname.startsWith('/analises-unidades')
   ) return 'INCORP'
   if (pathname.startsWith('/imoveis')) return 'IMOB'
-  if (pathname.startsWith('/usuarios')) return 'USUARIOS'
+  if (pathname.startsWith('/usuarios') && perfil !== 'MASTER') return 'USUARIOS'
   return null
 }
 
@@ -28,14 +28,14 @@ export default function Sidebar({ session }: { session: Session }) {
   const isAdmin = ['MASTER', 'PROPRIETARIO'].includes(perfil)
   const temIncorporacao = isAdmin || usuario.acessoIncorp === true
   const temImoveis = isAdmin || usuario.acessoImob === true
-  const temUsuarios = isAdmin
+  const temUsuarios = perfil === 'PROPRIETARIO'
 
-  const [moduloAberto, setModuloAberto] = useState<Modulo | null>(rotaParaModulo(pathname))
+  const [moduloAberto, setModuloAberto] = useState<Modulo | null>(rotaParaModulo(pathname, perfil))
   const [recolhido, setRecolhido] = useState(false)
 
   // Abre automaticamente o módulo correspondente à rota atual
   useEffect(() => {
-    const modulo = rotaParaModulo(pathname)
+    const modulo = rotaParaModulo(pathname, perfil)
     if (modulo !== null) {
       setModuloAberto(modulo)
     }
