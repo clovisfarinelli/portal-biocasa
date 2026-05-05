@@ -145,11 +145,11 @@ function Cb({ m, label }: { m?: boolean | null; label: string }) {
   )
 }
 
-function Row({ children, mb = 2 }: { children: React.ReactNode; mb?: number }) {
+function Row({ children, mb = 1 }: { children: React.ReactNode; mb?: number }) {
   return <div style={{ ...S.row, marginBottom: mb }}>{children}</div>
 }
 
-function CbRow({ label, children, mb = 2 }: { label?: string; children: React.ReactNode; mb?: number }) {
+function CbRow({ label, children, mb = 1 }: { label?: string; children: React.ReactNode; mb?: number }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1px 0', marginBottom: mb }}>
       {label && <span style={{ ...S.label, marginRight: 4 }}>{label}</span>}
@@ -183,7 +183,7 @@ function Sec({ children }: { children: React.ReactNode }) {
 
 function FacilGrid({ items, selected }: { items: { id: string; label: string }[]; selected: string[] }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1px 2px', marginBottom: 2 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 1px', marginBottom: 1 }}>
       {items.map(item => (
         <Cb key={item.id} m={selected.includes(item.id)} label={item.label} />
       ))}
@@ -212,13 +212,13 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
       color: '#000',
       background: '#fff',
       width: '100%',
-      padding: '4mm 6mm 3mm',
+      padding: '2mm 5mm 2mm',
       boxSizing: 'border-box',
     }}>
       {/* ── Cabeçalho (1 linha) ── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        borderBottom: '2px solid #000', paddingBottom: 3, marginBottom: 4,
+        borderBottom: '2px solid #000', paddingBottom: 2, marginBottom: 3,
         background: 'white',
       }}>
         <span style={{ fontWeight: 'bold', fontSize: '10pt', letterSpacing: 1, color: '#000' }}>BIOCASA</span>
@@ -226,7 +226,8 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
           Ficha de Captação de Imóvel
         </span>
         <span style={{ fontSize: '7pt', color: '#444', background: 'white' }}>
-          {d.unidadeNome ? `${d.unidadeNome} · ` : ''}Data: {data}
+          {d.unidadeNome ? `${d.unidadeNome} · ` : ''}
+          {td ? `Santos, ${data}` : 'Santos, ____/____/______'}
         </span>
       </div>
 
@@ -393,56 +394,66 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
       <Sec>
         <SecTitle n={2} title="Dados do Imóvel" />
 
-        {/* Dormitórios / Suítes / Banheiros — underline */}
-        <Row>
-          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2 }}>
-            <span style={S.label}>Dorms:</span>
-            <span style={S.campoFixo(30)}>{td ? (DORMI_LABEL[d.dormitorios ?? ''] ?? d.dormitorios ?? '') : ''}</span>
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, marginLeft: 8 }}>
-            <span style={S.label}>Suítes:</span>
-            <span style={S.campoFixo(28)}>{td ? (SUITES_LABEL[d.suites ?? ''] ?? d.suites ?? '') : ''}</span>
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, marginLeft: 8 }}>
-            <span style={S.label}>Banheiros:</span>
-            <span style={S.campoFixo(28)}>{td ? (d.totalBanheiros ?? '') : ''}</span>
-          </span>
-        </Row>
+        {/* 2 colunas: esquerda 60% | direita 40% */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 1 }}>
 
-        {/* Situação */}
-        <CbRow label="Situação:">
-          <Cb m={td ? d.situacaoImovel === 'MOBILIADO' : false} label="Mobiliado" />
-          <Cb m={td ? d.situacaoImovel === 'SEMI_MOBILIADO' : false} label="Semi-Mob." />
-          <Cb m={td ? d.situacaoImovel === 'SEM_MOBILIA' : false} label="Sem Mob." />
-          <Cb m={td ? d.situacaoImovel === 'EM_REFORMA' : false} label="Em Reforma" />
-          <Cb m={td ? d.situacaoImovel === 'NA_PLANTA' : false} label="Na Planta" />
-        </CbRow>
+          {/* Coluna esquerda */}
+          <div style={{ flex: '0 0 60%' }}>
+            {/* Dorms / Suítes / Banheiros */}
+            <Row>
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2 }}>
+                <span style={S.label}>Dorm:</span>
+                <span style={S.campoFixo(24)}>{td ? (DORMI_LABEL[d.dormitorios ?? ''] ?? d.dormitorios ?? '') : ''}</span>
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, marginLeft: 4 }}>
+                <span style={S.label}>Suítes:</span>
+                <span style={S.campoFixo(22)}>{td ? (SUITES_LABEL[d.suites ?? ''] ?? d.suites ?? '') : ''}</span>
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, marginLeft: 4 }}>
+                <span style={S.label}>Banh:</span>
+                <span style={S.campoFixo(22)}>{td ? (d.totalBanheiros ?? '') : ''}</span>
+              </span>
+            </Row>
+            {/* Situação */}
+            <CbRow label="Situação:" mb={0}>
+              <Cb m={td ? d.situacaoImovel === 'MOBILIADO' : false} label="Mobiliado" />
+              <Cb m={td ? d.situacaoImovel === 'SEMI_MOBILIADO' : false} label="Semi-Mob." />
+              <Cb m={td ? d.situacaoImovel === 'SEM_MOBILIA' : false} label="Sem Mob." />
+              <Cb m={td ? d.situacaoImovel === 'EM_REFORMA' : false} label="Em Reforma" />
+              <Cb m={td ? d.situacaoImovel === 'NA_PLANTA' : false} label="Na Planta" />
+            </CbRow>
+          </div>
 
-        {/* Vagas + Tipo Garagem — underline */}
-        <Row>
-          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2 }}>
-            <span style={S.label}>Vagas:</span>
-            <span style={S.campoFixo(28)}>{td ? (VAGAS_LABEL[d.vagasGaragem ?? ''] ?? d.vagasGaragem ?? '') : ''}</span>
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, marginLeft: 8 }}>
-            <span style={S.label}>Tipo Garagem:</span>
-            <span style={S.campoFixo(80)}>{td ? (GARAGEM_LABEL[d.tipoGaragem ?? ''] ?? d.tipoGaragem ?? '') : ''}</span>
-          </span>
-        </Row>
-
-        {/* Dependência + Vista Mar + Tipo */}
-        <CbRow mb={2}>
-          <Cb m={d.dependencia} label="Dependência" />
-          <Cb m={d.vistaMar} label="Vista Mar" />
-          <span style={{ ...S.label, marginLeft: 6, marginRight: 3 }}>Tipo Vista Mar:</span>
-          <Cb m={td ? d.tipoVistaMar === 'FRENTE' : false} label="Frontal" />
-          <Cb m={td ? d.tipoVistaMar === 'LATERAL' : false} label="Lateral" />
-          <Cb m={td ? (!d.tipoVistaMar && !!d.vistaMar) : false} label="Parcial" />
-        </CbRow>
+          {/* Coluna direita */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Vagas + Tipo Garagem */}
+            <Row>
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2 }}>
+                <span style={S.label}>Vagas:</span>
+                <span style={S.campoFixo(22)}>{td ? (VAGAS_LABEL[d.vagasGaragem ?? ''] ?? d.vagasGaragem ?? '') : ''}</span>
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, marginLeft: 4, flex: 1 }}>
+                <span style={S.label}>Tipo:</span>
+                <span style={{ ...S.campo, minWidth: 40 }}>{td ? (GARAGEM_LABEL[d.tipoGaragem ?? ''] ?? d.tipoGaragem ?? '') : ''}</span>
+              </span>
+            </Row>
+            {/* Dependência + Vista Mar */}
+            <CbRow mb={0}>
+              <Cb m={d.dependencia} label="Dependência" />
+              <Cb m={d.vistaMar} label="Vista Mar" />
+            </CbRow>
+            {/* Tipo Vista Mar */}
+            <CbRow label="Tipo Vista:" mb={0}>
+              <Cb m={td ? d.tipoVistaMar === 'FRENTE' : false} label="Frontal" />
+              <Cb m={td ? d.tipoVistaMar === 'LATERAL' : false} label="Lateral" />
+              <Cb m={td ? (!d.tipoVistaMar && !!d.vistaMar) : false} label="Parcial" />
+            </CbRow>
+          </div>
+        </div>
 
         {/* Facilidades do Imóvel — 3 colunas */}
-        <div style={{ marginBottom: 2 }}>
-          <span style={{ ...S.label, display: 'block', marginBottom: 1 }}>Facilidades do Imóvel:</span>
+        <div style={{ marginBottom: 1 }}>
+          <span style={{ ...S.label, display: 'block', marginBottom: 0 }}>Facilidades do Imóvel:</span>
           <FacilGrid
             selected={facilImovel}
             items={[
@@ -548,7 +559,7 @@ export default function FichaCaptacao({ dados }: { dados?: DadosImovelFicha }) {
         {/* Separador cortável */}
         <div style={{
           position: 'relative', textAlign: 'center',
-          borderTop: '1.5px dashed #888', margin: '3mm 0',
+          borderTop: '1.5px dashed #888', margin: '2mm 0',
           background: 'white',
         }}>
           <span style={{
