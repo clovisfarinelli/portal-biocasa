@@ -59,3 +59,11 @@ export function obterLimiteArquivo(tipo: string): number {
   if (tipo.includes('kml') || tipo.includes('kmz')) return LIMITES_UPLOAD.kml
   return LIMITES_UPLOAD.pdf
 }
+
+const SUFIXO_PARCERIA = '\n\nImóvel em Parceria Imobiliária'
+
+export function aplicarSufixoParceria(texto: string, parceria: boolean): string {
+  if (!parceria) return texto
+  if (texto.trimEnd().endsWith(SUFIXO_PARCERIA.trim())) return texto
+  return texto.trimEnd() + SUFIXO_PARCERIA
+}

@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import GerenciarFotosModal from './GerenciarFotosModal'
 import TagInput from '@/components/TagInput'
-import { formatarMoeda } from '@/lib/utils'
+import { formatarMoeda, aplicarSufixoParceria } from '@/lib/utils'
+import ModalConfirmarDescricaoIA from '@/components/ModalConfirmarDescricaoIA'
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -392,6 +393,8 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
   )
   const [salvando, setSalvando] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
+  const [gerandoDescricao, setGerandoDescricao] = useState(false)
+  const [modalConfirmarIA, setModalConfirmarIA] = useState(false)
   const [mensagem, setMensagem] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null)
   const [buscandoCep, setBuscandoCep] = useState(false)
   const [cepMensagem, setCepMensagem] = useState<string | null>(null)
@@ -585,19 +588,71 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
     }
   }
 
-  async function salvar() {
-    const erroValidacao = validar()
-    if (erroValidacao) {
-      setMensagem({ tipo: 'erro', texto: erroValidacao })
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      return
+  function coletarDadosParaIA() {
+    return {
+      finalidade: form.finalidade,
+      tipo: form.tipo,
+      subtipo: form.subtipo,
+      modalidade: form.modalidade,
+      logradouro: form.logradouro,
+      bairro: form.bairro,
+      cidade: form.cidade,
+      estado: form.estado,
+      edificio: form.edificio,
+      dormitorios: form.dormitorios,
+      suites: form.suites,
+      totalBanheiros: form.totalBanheiros,
+      vagasGaragem: form.vagasGaragem,
+      tipoGaragem: form.tipoGaragem,
+      areaUtil: form.areaUtil,
+      areaTotal: form.areaTotal,
+      situacaoImovel: form.situacaoImovel,
+      vistaMar: form.vistaMar,
+      tipoVistaMar: form.tipoVistaMar,
+      dependencia: form.dependencia,
+      facilidadesImovel: form.facilidadesImovel,
+      facilidadesImovelOutros: form.facilidadesImovelOutros,
+      acesso: form.acesso,
+      andar: form.andar,
+      facilidadesCond: form.facilidadesCond,
+      facilidadesCondOutros: form.facilidadesCondOutros,
     }
+  }
 
+  async function gerarDescricaoIA(): Promise<string | null> {
+    setGerandoDescricao(true)
+    try {
+      const res = await fetch('/api/imoveis/gerar-descricao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(coletarDadosParaIA()),
+      })
+      const data = await res.json()
+      if (!res.ok || data.erro) {
+        setMensagem({ tipo: 'erro', texto: data.erro ?? 'Erro ao gerar descrição' })
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return null
+      }
+      const descricaoFinal = aplicarSufixoParceria(data.descricao ?? '', form.parceria)
+      setForm(prev => ({ ...prev, descricao: descricaoFinal }))
+      return descricaoFinal
+    } catch {
+      setMensagem({ tipo: 'erro', texto: 'Erro de conexão ao gerar descrição.' })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return null
+    } finally {
+      setGerandoDescricao(false)
+    }
+  }
+
+  async function executarSave(descricaoFinal: string) {
     setSalvando(true)
     setMensagem(null)
-
     try {
-      const payload = montarPayload()
+      const payload = {
+        ...montarPayload(),
+        descricao: descricaoFinal.trim() || undefined,
+      }
       const url = modoEdicao ? `/api/imoveis/${imovelId}` : '/api/imoveis'
       const method = modoEdicao ? 'PUT' : 'POST'
 
@@ -626,6 +681,37 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
     } finally {
       setSalvando(false)
     }
+  }
+
+  async function salvar() {
+    const erroValidacao = validar()
+    if (erroValidacao) {
+      setMensagem({ tipo: 'erro', texto: erroValidacao })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
+    if (form.descricao.trim()) {
+      setModalConfirmarIA(true)
+    } else {
+      const descricaoFinal = await gerarDescricaoIA()
+      if (descricaoFinal === null) return
+      await executarSave(descricaoFinal)
+    }
+  }
+
+  async function handleManterTexto() {
+    setModalConfirmarIA(false)
+    const descricaoFinal = aplicarSufixoParceria(form.descricao, form.parceria)
+    setForm(prev => ({ ...prev, descricao: descricaoFinal }))
+    await executarSave(descricaoFinal)
+  }
+
+  async function handleGerarComIA() {
+    setModalConfirmarIA(false)
+    const descricaoFinal = await gerarDescricaoIA()
+    if (descricaoFinal === null) return
+    await executarSave(descricaoFinal)
   }
 
   async function excluir() {
@@ -1051,7 +1137,13 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
 
         <div>
           <Label>Descrição do Imóvel</Label>
-          <Textarea {...campo('descricao')} rows={5} placeholder="Descreva o imóvel para publicação..." />
+          <Textarea
+            {...campo('descricao')}
+            rows={5}
+            placeholder="Descreva o imóvel para publicação..."
+            disabled={gerandoDescricao}
+            className={gerandoDescricao ? 'opacity-50 cursor-not-allowed' : ''}
+          />
         </div>
       </div>
 
@@ -1232,15 +1324,27 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
           )}
         </div>
         <div className="flex gap-3">
-          <button onClick={() => router.push(voltarUrl ?? '/imoveis')} className="btn-secondary text-sm">
+          <button
+            onClick={() => router.push(voltarUrl ?? '/imoveis')}
+            disabled={gerandoDescricao || salvando}
+            className="btn-secondary text-sm"
+          >
             Cancelar
           </button>
           <button
             onClick={salvar}
-            disabled={salvando}
-            className="btn-primary flex items-center gap-2 text-sm min-w-32 justify-center"
+            disabled={salvando || gerandoDescricao}
+            className="btn-primary flex items-center gap-2 text-sm min-w-40 justify-center"
           >
-            {salvando ? (
+            {gerandoDescricao ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Gerando descrição...
+              </>
+            ) : salvando ? (
               <>
                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -1273,6 +1377,13 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
             Voltar
           </button>
         </div>
+      )}
+
+      {modalConfirmarIA && (
+        <ModalConfirmarDescricaoIA
+          onGerarComIA={handleGerarComIA}
+          onManterTexto={handleManterTexto}
+        />
       )}
     </div>
   )
