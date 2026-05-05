@@ -89,6 +89,7 @@ const S = {
     borderBottom: '1px solid #333',
     minWidth: 18,
     paddingLeft: 2,
+    paddingBottom: 2,
     display: 'inline-block' as const,
     minHeight: 11,
     fontSize: '8pt',
@@ -101,7 +102,7 @@ const S = {
     borderBottom: '1px solid #333',
     width: w,
     minHeight: 11,
-    padding: '0 2px',
+    padding: '0 2px 2px',
     fontSize: '8pt',
     color: '#000',
     background: 'transparent',
@@ -111,7 +112,7 @@ const S = {
     display: 'flex' as const,
     alignItems: 'baseline' as const,
     gap: 6,
-    marginBottom: 2,
+    marginBottom: 5,
   },
   cbWrap: {
     display: 'inline-flex' as const,
@@ -145,11 +146,11 @@ function Cb({ m, label }: { m?: boolean | null; label: string }) {
   )
 }
 
-function Row({ children, mb = 2 }: { children: React.ReactNode; mb?: number }) {
+function Row({ children, mb = 5 }: { children: React.ReactNode; mb?: number }) {
   return <div style={{ ...S.row, marginBottom: mb }}>{children}</div>
 }
 
-function CbRow({ label, children, mb = 2 }: { label?: string; children: React.ReactNode; mb?: number }) {
+function CbRow({ label, children, mb = 5 }: { label?: string; children: React.ReactNode; mb?: number }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1px 0', marginBottom: mb }}>
       {label && <span style={{ ...S.label, marginRight: 4 }}>{label}</span>}
@@ -163,7 +164,7 @@ function SecTitle({ n, title }: { n: number; title: string }) {
     <div className="ficha-secao-titulo" style={{
       fontSize: '7pt', fontWeight: 'bold', textTransform: 'uppercase',
       background: '#eee', color: '#000', padding: '1px 4px',
-      marginBottom: 3, letterSpacing: 0.3,
+      marginBottom: 5, letterSpacing: 0.3,
     }}>
       {n}. {title}
     </div>
@@ -173,7 +174,7 @@ function SecTitle({ n, title }: { n: number; title: string }) {
 function Sec({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
-      border: '1px solid #bbb', padding: '3px 5px', marginBottom: 3,
+      border: '1px solid #bbb', padding: '5px 6px', marginBottom: 5,
       background: 'white',
     }}>
       {children}
@@ -209,16 +210,17 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
     <div style={{
       fontFamily: 'Arial, Helvetica, sans-serif',
       fontSize: '8pt',
+      lineHeight: '1.8',
       color: '#000',
       background: '#fff',
       width: '100%',
-      padding: '2mm 5mm 2mm',
+      padding: '3mm 5mm 3mm',
       boxSizing: 'border-box',
     }}>
       {/* ── Cabeçalho (1 linha) ── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        borderBottom: '2px solid #000', paddingBottom: 2, marginBottom: 3,
+        borderBottom: '2px solid #000', paddingBottom: 3, marginBottom: 5,
         background: 'white',
       }}>
         <span style={{ fontWeight: 'bold', fontSize: '10pt', letterSpacing: 1, color: '#000' }}>BIOCASA</span>
@@ -255,7 +257,7 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
         </CbRow>
 
         {/* Tipo + Subtipo — mesma linha */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1px 0', marginBottom: 2 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1px 0', marginBottom: 5 }}>
           <span style={{ ...S.label, marginRight: 4 }}>Tipo:</span>
           <Cb m={td ? d.tipo === 'APARTAMENTO' : false} label="Apto" />
           <Cb m={td ? d.tipo === 'CASA' : false} label="Casa" />
@@ -381,7 +383,7 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
         <SecTitle n={2} title="Dados do Imóvel" />
 
         {/* 2 colunas: esquerda 60% | direita 40% */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 1 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 4 }}>
 
           {/* Coluna esquerda */}
           <div style={{ flex: '0 0 60%' }}>
@@ -438,7 +440,7 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
         </div>
 
         {/* Facilidades do Imóvel — 3 colunas */}
-        <div style={{ marginBottom: 1 }}>
+        <div style={{ marginBottom: 3 }}>
           <span style={{ ...S.label, display: 'block', marginBottom: 0 }}>Facilidades do Imóvel:</span>
           <FacilGrid
             selected={facilImovel}
@@ -493,7 +495,7 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
 
       {/* ── Rodapé (1 linha, 7pt) ── */}
       <div style={{
-        borderTop: '1px solid #ccc', paddingTop: 2, marginTop: 2,
+        borderTop: '1px solid #ccc', paddingTop: 3, marginTop: 3,
         fontSize: '7pt', color: '#666', textAlign: 'center', background: 'white',
       }}>
         Biocasa Santos — uso interno — {data}
