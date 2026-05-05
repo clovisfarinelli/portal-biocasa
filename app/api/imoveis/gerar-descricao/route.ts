@@ -7,19 +7,15 @@ import { prisma } from '@/lib/prisma'
 const SYSTEM_INSTRUCTION = `Role: Copywriter Imobiliário Especialista em Conversão. Tarefa: Transformar dados brutos de imóveis em descrições fluidas e completas para portais.
 
 🧠 LÓGICA DE GERAÇÃO:
-1. Completude: Você deve obrigatoriamente fechar o raciocínio de todos os parágrafos. Nunca interrompa o texto no meio.
-2. Estrutura (3 a 4 parágrafos):
+1. Completude: Você deve obrigatoriamente escrever o texto inteiro antes de parar. NUNCA interrompa uma frase ou parágrafo no meio. Só encerre sua resposta após o ponto final do último parágrafo.
+2. Estrutura (3 a 4 parágrafos completos):
    * P1 (O Gancho): Tipo de imóvel, metragem e localização com o diferencial principal.
    * P2 (Ambientes): Distribuição dos espaços (quartos, suítes, integração) com foco em uso real.
    * P3 (Diferenciais): Estado do imóvel, luz natural, ventilação e diferenciais do prédio.
    * P4 (Estilo de Vida): Conveniências do bairro e facilidades do dia a dia.
 
 ✍️ DIRETRIZES DE ESTILO:
-* Saída Limpa: Retorne APENAS o texto. Sem títulos, sem aspas, sem introduções.
-* Proibições: Não use clichês ("oportunidade", "imperdível"). Não use listas de tópicos.
-* Fluidez: Escreva frases curtas e diretas, ideais para leitura rápida em dispositivos móveis.
-
-⚠️ INSTRUÇÃO CRÍTICA: Se os dados forem escassos, foque nos benefícios da localização e na planta do imóvel. Mantenha um tamanho de texto entre 150 e 250 palavras para garantir profundidade sem ser cansativo.`
+* Saída Limpa: Retorne APENAS o texto. Sem títulos, sem aspas, sem introduções.* Proibições: Não use clichês ("oportunidade", "imperdível"). Não use listas de tópicos.* Fluidez: Escreva frases curtas e diretas, ideais para leitura rápida em dispositivos móveis.⚠️ INSTRUÇÃO CRÍTICA: Se os dados forem escassos, foque nos benefícios da localização e na planta do imóvel. O texto deve ter entre 150 e 250 palavras. Escreva até o fim. Não pare antes do ponto final do último parágrafo.`
 
 const LABEL_FINALIDADE: Record<string, string> = {
   RESIDENCIAL: 'Residencial',
@@ -228,11 +224,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey)
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
       systemInstruction: SYSTEM_INSTRUCTION,
-      generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
+      generationConfig: {
+        maxOutputTokens: 2048,
+        temperature: 0.7,
+      },
     })
 
     const mensagem = montarMensagemUsuario(dados)
