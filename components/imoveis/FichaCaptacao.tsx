@@ -145,11 +145,11 @@ function Cb({ m, label }: { m?: boolean | null; label: string }) {
   )
 }
 
-function Row({ children, mb = 1 }: { children: React.ReactNode; mb?: number }) {
+function Row({ children, mb = 2 }: { children: React.ReactNode; mb?: number }) {
   return <div style={{ ...S.row, marginBottom: mb }}>{children}</div>
 }
 
-function CbRow({ label, children, mb = 1 }: { label?: string; children: React.ReactNode; mb?: number }) {
+function CbRow({ label, children, mb = 2 }: { label?: string; children: React.ReactNode; mb?: number }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1px 0', marginBottom: mb }}>
       {label && <span style={{ ...S.label, marginRight: 4 }}>{label}</span>}
@@ -254,9 +254,10 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
           <Cb m={td ? d.finalidade === 'RURAL' : false} label="Rural" />
         </CbRow>
 
-        {/* Tipo */}
-        <CbRow label="Tipo:">
-          <Cb m={td ? d.tipo === 'APARTAMENTO' : false} label="Apartamento" />
+        {/* Tipo + Subtipo — mesma linha */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1px 0', marginBottom: 2 }}>
+          <span style={{ ...S.label, marginRight: 4 }}>Tipo:</span>
+          <Cb m={td ? d.tipo === 'APARTAMENTO' : false} label="Apto" />
           <Cb m={td ? d.tipo === 'CASA' : false} label="Casa" />
           <Cb m={td ? d.tipo === 'TERRENO' : false} label="Terreno" />
           <Cb m={td ? (d.tipo === 'APARTAMENTO' && d.subtipo === 'KITNET_STUDIO') : false} label="Kitnet" />
@@ -265,13 +266,11 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
           <Cb m={td ? d.tipo === 'LOJA' : false} label="Loja" />
           <Cb m={false} label="Garagem" />
           <Cb m={td ? d.tipo === 'CHACARA' : false} label="Chácara" />
-        </CbRow>
-
-        {/* Subtipo */}
-        <Row>
-          <span style={S.label}>Subtipo:</span>
-          <span style={S.campo}>{td && d.subtipo ? (SUBTIPO_LABEL[d.subtipo] ?? d.subtipo) : ''}</span>
-        </Row>
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, marginLeft: 6 }}>
+            <span style={S.label}>Subtipo:</span>
+            <span style={{ ...S.campo, minWidth: 55 }}>{td && d.subtipo ? (SUBTIPO_LABEL[d.subtipo] ?? d.subtipo) : ''}</span>
+          </span>
+        </div>
 
         {/* CEP + Logradouro + Nº */}
         <Row>
@@ -329,56 +328,43 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
           </span>
         </Row>
 
-        {/* Captador + Parceria */}
+        {/* Captador (solo) */}
         <Row>
-          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 55%' }}>
-            <span style={S.label}>Captador:</span>
-            <span style={S.campo}>{d.captador ?? ''}</span>
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Cb m={d.parceria} label="Parceria Imobiliária" />
-          </span>
+          <span style={S.label}>Captador:</span>
+          <span style={S.campo}>{d.captador ?? ''}</span>
         </Row>
 
-        {/* Valor Venda + Modalidade */}
+        {/* Parceria + Modalidade (mesma linha, sem V+L) */}
+        <CbRow mb={2}>
+          <Cb m={d.parceria} label="Parceria Imobiliária" />
+          <span style={{ ...S.label, marginLeft: 8, marginRight: 3 }}>Modalidade:</span>
+          <Cb m={td ? d.modalidade === 'VENDA' : false} label="Venda" />
+          <Cb m={td ? (d.modalidade === 'LOCACAO' || d.modalidade === 'AMBOS') : false} label="Locação" />
+        </CbRow>
+
+        {/* Valor Venda/Locação (campo único) */}
         <Row>
-          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 52%' }}>
-            <span style={S.label}>Valor Venda R$:</span>
-            <span style={S.campo}>{td ? fmt(d.valorVenda) : ''}</span>
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <span style={{ ...S.label, marginRight: 2 }}>Modalidade:</span>
-            <Cb m={td ? d.modalidade === 'VENDA' : false} label="Venda" />
-            <Cb m={td ? d.modalidade === 'LOCACAO' : false} label="Locação" />
-            <Cb m={td ? d.modalidade === 'AMBOS' : false} label="V+L" />
-          </span>
+          <span style={S.label}>Valor Venda/Locação R$:</span>
+          <span style={S.campo}>{td ? (fmt(d.valorVenda) || fmt(d.valorLocacao)) : ''}</span>
         </Row>
 
-        {/* Valor Locação + Área Útil + Área Total */}
+        {/* Cond + IPTU + Área Útil + Área Total (mesma linha) */}
         <Row>
-          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 42%' }}>
-            <span style={S.label}>Valor Locação R$:</span>
-            <span style={S.campo}>{td ? fmt(d.valorLocacao) : ''}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3 }}>
+            <span style={S.label}>Cond. R$:</span>
+            <span style={S.campoFixo(42)}>{td ? fmt(d.valorCondominio) : ''}</span>
           </span>
-          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 29%' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, marginLeft: 4 }}>
+            <span style={S.label}>IPTU R$:</span>
+            <span style={S.campoFixo(42)}>{td ? fmt(d.valorIptu) : ''}</span>
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, marginLeft: 4 }}>
             <span style={S.label}>Área Útil m²:</span>
-            <span style={S.campo}>{td && d.areaUtil ? String(d.areaUtil) : ''}</span>
+            <span style={S.campoFixo(28)}>{td && d.areaUtil ? String(d.areaUtil) : ''}</span>
           </span>
-          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: 1 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, marginLeft: 4 }}>
             <span style={S.label}>Área Total m²:</span>
-            <span style={S.campo}>{td && d.areaTotal ? String(d.areaTotal) : ''}</span>
-          </span>
-        </Row>
-
-        {/* Condomínio + IPTU */}
-        <Row>
-          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 50%' }}>
-            <span style={S.label}>Cond. R$/mês:</span>
-            <span style={S.campo}>{td ? fmt(d.valorCondominio) : ''}</span>
-          </span>
-          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: 1 }}>
-            <span style={S.label}>IPTU Mensal R$:</span>
-            <span style={S.campo}>{td ? fmt(d.valorIptu) : ''}</span>
+            <span style={S.campoFixo(28)}>{td && d.areaTotal ? String(d.areaTotal) : ''}</span>
           </span>
         </Row>
 
@@ -492,25 +478,17 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
           </span>
         </Row>
 
-        {/* Facilidades do Condomínio — 3 colunas */}
-        <div style={{ marginBottom: 2 }}>
-          <span style={{ ...S.label, display: 'block', marginBottom: 1 }}>Facilidades do Condomínio:</span>
-          <FacilGrid
-            selected={facilCond}
-            items={[
-              { id: 'PISCINA', label: 'Piscina' },
-              { id: 'ACADEMIA', label: 'Academia' },
-              { id: 'SALAO_FESTAS', label: 'Salão de Festas' },
-              { id: 'SALAO_JOGOS', label: 'Salão de Jogos' },
-              { id: 'PLAYGROUND', label: 'Playground' },
-            ]}
-          />
-        </div>
-
-        <Row mb={0}>
-          <span style={S.label}>Outros:</span>
+        {/* Facilidades do Condomínio + Outros — mesma linha */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '1px 0', marginBottom: 0 }}>
+          <span style={{ ...S.label, marginRight: 3 }}>Facilidades Cond.:</span>
+          <Cb m={facilCond.includes('PISCINA')} label="Piscina" />
+          <Cb m={facilCond.includes('ACADEMIA')} label="Academia" />
+          <Cb m={facilCond.includes('SALAO_FESTAS')} label="Salão Festas" />
+          <Cb m={facilCond.includes('SALAO_JOGOS')} label="Salão Jogos" />
+          <Cb m={facilCond.includes('PLAYGROUND')} label="Playground" />
+          <span style={{ ...S.label, marginLeft: 6, marginRight: 3 }}>Outros:</span>
           <span style={S.campo}>{d.facilidadesCondOutros ?? ''}</span>
-        </Row>
+        </div>
       </Sec>
 
       {/* ── Rodapé (1 linha, 7pt) ── */}
