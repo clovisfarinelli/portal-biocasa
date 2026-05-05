@@ -1,6 +1,5 @@
 'use client'
 
-// Prop `dados` opcional — quando ausente renderiza em branco, quando presente renderiza preenchida
 export interface DadosImovelFicha {
   codigoRef?: string | null
   nome?: string | null
@@ -48,8 +47,25 @@ export interface DadosImovelFicha {
   unidadeNome?: string | null
 }
 
-interface FichaCaptacaoProps {
-  dados?: DadosImovelFicha
+// ─── Constantes de labels ────────────────────────────────────────────────────
+
+const SUBTIPO_LABEL: Record<string, string> = {
+  ISOLADA: 'Isolada', SOBRADO: 'Sobrado', SOBREPOSTA_ALTA: 'Sob. Alta',
+  SOBREPOSTA_BAIXA: 'Sob. Baixa', VILLAGGIO: 'Villaggio',
+  KITNET_STUDIO: 'Kitnet/Studio', PADRAO: 'Padrão', TERREO: 'Térreo',
+}
+const DORMI_LABEL: Record<string, string> = {
+  KIT_STUDIO: 'Kit/Studio', '1': '1', '2': '2', '3': '3', '4_MAIS': '4+',
+}
+const SUITES_LABEL: Record<string, string> = {
+  NAO_TEM: '0', '1': '1', '2': '2', '3_MAIS': '3+',
+}
+const VAGAS_LABEL: Record<string, string> = {
+  SEM_VAGA: '0', '1': '1', '2': '2', '3_MAIS': '3+', MOTOS: 'Motos',
+}
+const GARAGEM_LABEL: Record<string, string> = {
+  FECHADA: 'Box Fechado', DEMARCADA: 'Descoberta',
+  COLETIVA_SUF: 'Coberta', COLETIVA_INSUF: 'Rotativa',
 }
 
 function fmt(v: number | null | undefined) {
@@ -57,38 +73,130 @@ function fmt(v: number | null | undefined) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function Linha({ label, valor }: { label: string; valor?: string | null }) {
-  return (
-    <div className="ficha-linha">
-      <span className="ficha-label">{label}:</span>
-      <span className="ficha-campo">{valor ?? ''}</span>
-    </div>
-  )
+// ─── Estilos base (todos inline para garantir impressão correta) ─────────────
+
+const S = {
+  label: {
+    fontSize: '7.5pt',
+    fontWeight: 'bold' as const,
+    whiteSpace: 'nowrap' as const,
+    flexShrink: 0,
+    color: '#000',
+    background: 'transparent',
+  },
+  campo: {
+    flex: 1,
+    borderBottom: '1px solid #333',
+    minWidth: 18,
+    paddingLeft: 2,
+    display: 'inline-block' as const,
+    minHeight: 11,
+    fontSize: '8pt',
+    color: '#000',
+    background: 'transparent',
+    verticalAlign: 'baseline' as const,
+  },
+  campoFixo: (w: number | string) => ({
+    display: 'inline-block' as const,
+    borderBottom: '1px solid #333',
+    width: w,
+    minHeight: 11,
+    padding: '0 2px',
+    fontSize: '8pt',
+    color: '#000',
+    background: 'transparent',
+    verticalAlign: 'baseline' as const,
+  }),
+  row: {
+    display: 'flex' as const,
+    alignItems: 'baseline' as const,
+    gap: 6,
+    marginBottom: 2,
+  },
+  cbWrap: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: 2,
+    marginRight: 5,
+    fontSize: '7.5pt',
+    whiteSpace: 'nowrap' as const,
+    color: '#000',
+    background: 'transparent',
+  },
 }
 
-function Checkbox({ marcado, label }: { marcado?: boolean | null; label: string }) {
+// ─── Componentes helper ──────────────────────────────────────────────────────
+
+function Cb({ m, label }: { m?: boolean | null; label: string }) {
   return (
-    <span className="ficha-checkbox">
-      <span className={`ficha-box${marcado ? ' marcado' : ''}`}>{marcado ? '✓' : ''}</span>
+    <span style={S.cbWrap}>
+      <span style={{
+        display: 'inline-block', width: 9, height: 9,
+        border: '1px solid #000', textAlign: 'center', lineHeight: '9px',
+        fontSize: '7pt', flexShrink: 0,
+        background: m ? '#000' : 'white',
+        color: m ? 'white' : 'transparent',
+        fontFamily: 'Arial, sans-serif',
+      }}>
+        {m ? '✓' : ''}
+      </span>
       {label}
     </span>
   )
 }
 
-const TIPOS_LABEL: Record<string, string> = {
-  APARTAMENTO: 'Apartamento', CASA: 'Casa', TERRENO: 'Terreno', CHACARA: 'Chácara',
-  SALA: 'Sala', LOJA: 'Loja', CASA_COMERCIAL: 'Casa Comercial', GALPAO: 'Galpão',
+function Row({ children, mb = 2 }: { children: React.ReactNode; mb?: number }) {
+  return <div style={{ ...S.row, marginBottom: mb }}>{children}</div>
 }
 
-const SUBTIPO_LABEL: Record<string, string> = {
-  ISOLADA: 'Isolada', SOBRADO: 'Sobrado', SOBREPOSTA_ALTA: 'Sobreposta Alta',
-  SOBREPOSTA_BAIXA: 'Sobreposta Baixa', VILLAGGIO: 'Villaggio',
-  KITNET_STUDIO: 'Kitnet/Studio', PADRAO: 'Padrão', TERREO: 'Térreo',
+function CbRow({ label, children, mb = 2 }: { label?: string; children: React.ReactNode; mb?: number }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1px 0', marginBottom: mb }}>
+      {label && <span style={{ ...S.label, marginRight: 4 }}>{label}</span>}
+      {children}
+    </div>
+  )
 }
 
-export default function FichaCaptacao({ dados }: FichaCaptacaoProps) {
+function SecTitle({ n, title }: { n: number; title: string }) {
+  return (
+    <div className="ficha-secao-titulo" style={{
+      fontSize: '7pt', fontWeight: 'bold', textTransform: 'uppercase',
+      background: '#eee', color: '#000', padding: '1px 4px',
+      marginBottom: 3, letterSpacing: 0.3,
+    }}>
+      {n}. {title}
+    </div>
+  )
+}
+
+function Sec({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      border: '1px solid #bbb', padding: '3px 5px', marginBottom: 3,
+      background: 'white',
+    }}>
+      {children}
+    </div>
+  )
+}
+
+function FacilGrid({ items, selected }: { items: { id: string; label: string }[]; selected: string[] }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1px 2px', marginBottom: 2 }}>
+      {items.map(item => (
+        <Cb key={item.id} m={selected.includes(item.id)} label={item.label} />
+      ))}
+    </div>
+  )
+}
+
+// ─── Ficha unitária (A5 — meia folha A4) ─────────────────────────────────────
+
+function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
   const d = dados ?? {}
-  const dataImpressao = new Date().toLocaleDateString('pt-BR')
+  const td = !!dados
+  const data = new Date().toLocaleDateString('pt-BR')
 
   const facilImovel: string[] = (() => {
     try { return d.facilidadesImovel ? JSON.parse(d.facilidadesImovel) : [] } catch { return [] }
@@ -97,411 +205,359 @@ export default function FichaCaptacao({ dados }: FichaCaptacaoProps) {
     try { return d.facilidadesCond ? JSON.parse(d.facilidadesCond) : [] } catch { return [] }
   })()
 
-  const temDados = !!dados
+  return (
+    <div style={{
+      fontFamily: 'Arial, Helvetica, sans-serif',
+      fontSize: '8pt',
+      color: '#000',
+      background: '#fff',
+      width: '100%',
+      padding: '4mm 6mm 3mm',
+      boxSizing: 'border-box',
+    }}>
+      {/* ── Cabeçalho (1 linha) ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        borderBottom: '2px solid #000', paddingBottom: 3, marginBottom: 4,
+        background: 'white',
+      }}>
+        <span style={{ fontWeight: 'bold', fontSize: '10pt', letterSpacing: 1, color: '#000' }}>BIOCASA</span>
+        <span style={{ fontWeight: 'bold', fontSize: '8.5pt', textTransform: 'uppercase', letterSpacing: 0.5, color: '#000' }}>
+          Ficha de Captação de Imóvel
+        </span>
+        <span style={{ fontSize: '7pt', color: '#444', background: 'white' }}>
+          {d.unidadeNome ? `${d.unidadeNome} · ` : ''}Data: {data}
+        </span>
+      </div>
 
+      {/* ── Seção 1: Dados Comerciais ── */}
+      <Sec>
+        <SecTitle n={1} title="Dados Comerciais" />
+
+        {/* Código + Nome */}
+        <Row>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 35%' }}>
+            <span style={S.label}>Cód.Ref.:</span>
+            <span style={S.campo}>{d.codigoRef ?? ''}</span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: 1 }}>
+            <span style={S.label}>Nome:</span>
+            <span style={S.campo}>{d.nome ?? ''}</span>
+          </span>
+        </Row>
+
+        {/* Finalidade */}
+        <CbRow label="Finalidade:">
+          <Cb m={td ? d.finalidade === 'RESIDENCIAL' : false} label="Residencial" />
+          <Cb m={td ? d.finalidade === 'COMERCIAL' : false} label="Comercial" />
+          <Cb m={td ? d.finalidade === 'RURAL' : false} label="Rural" />
+        </CbRow>
+
+        {/* Tipo */}
+        <CbRow label="Tipo:">
+          <Cb m={td ? d.tipo === 'APARTAMENTO' : false} label="Apartamento" />
+          <Cb m={td ? d.tipo === 'CASA' : false} label="Casa" />
+          <Cb m={td ? d.tipo === 'TERRENO' : false} label="Terreno" />
+          <Cb m={td ? (d.tipo === 'APARTAMENTO' && d.subtipo === 'KITNET_STUDIO') : false} label="Kitnet" />
+          <Cb m={false} label="Cobertura" />
+          <Cb m={false} label="Village" />
+          <Cb m={td ? d.tipo === 'LOJA' : false} label="Loja" />
+          <Cb m={false} label="Garagem" />
+          <Cb m={td ? d.tipo === 'CHACARA' : false} label="Chácara" />
+        </CbRow>
+
+        {/* Subtipo */}
+        <Row>
+          <span style={S.label}>Subtipo:</span>
+          <span style={S.campo}>{td && d.subtipo ? (SUBTIPO_LABEL[d.subtipo] ?? d.subtipo) : ''}</span>
+        </Row>
+
+        {/* CEP + Logradouro + Nº */}
+        <Row>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 28%' }}>
+            <span style={S.label}>CEP:</span>
+            <span style={S.campo}>{d.cep ?? ''}</span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 51%' }}>
+            <span style={S.label}>Logradouro:</span>
+            <span style={S.campo}>{d.logradouro ?? ''}</span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: 1 }}>
+            <span style={S.label}>Nº:</span>
+            <span style={S.campo}>{d.numero ?? ''}</span>
+          </span>
+        </Row>
+
+        {/* Complemento + Bairro + Estado */}
+        <Row>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 38%' }}>
+            <span style={S.label}>Complemento:</span>
+            <span style={S.campo}>{d.complemento ?? ''}</span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 37%' }}>
+            <span style={S.label}>Bairro:</span>
+            <span style={S.campo}>{d.bairro ?? ''}</span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: 1 }}>
+            <span style={S.label}>UF:</span>
+            <span style={S.campo}>{d.estado ?? ''}</span>
+          </span>
+        </Row>
+
+        {/* Cidade + Edifício */}
+        <Row>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 50%' }}>
+            <span style={S.label}>Cidade:</span>
+            <span style={S.campo}>{d.cidade ?? ''}</span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: 1 }}>
+            <span style={S.label}>Edifício/Cond.:</span>
+            <span style={S.campo}>{d.edificio ?? ''}</span>
+          </span>
+        </Row>
+
+        {/* Proprietário + Contato */}
+        <Row>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 58%' }}>
+            <span style={S.label}>Proprietário:</span>
+            <span style={S.campo}>{d.proprietario ?? ''}</span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: 1 }}>
+            <span style={S.label}>Contato:</span>
+            <span style={S.campo}>{d.telProprietario ?? ''}</span>
+          </span>
+        </Row>
+
+        {/* Captador + Parceria */}
+        <Row>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 55%' }}>
+            <span style={S.label}>Captador:</span>
+            <span style={S.campo}>{d.captador ?? ''}</span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Cb m={d.parceria} label="Parceria Imobiliária" />
+          </span>
+        </Row>
+
+        {/* Valor Venda + Modalidade */}
+        <Row>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 52%' }}>
+            <span style={S.label}>Valor Venda R$:</span>
+            <span style={S.campo}>{td ? fmt(d.valorVenda) : ''}</span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <span style={{ ...S.label, marginRight: 2 }}>Modalidade:</span>
+            <Cb m={td ? d.modalidade === 'VENDA' : false} label="Venda" />
+            <Cb m={td ? d.modalidade === 'LOCACAO' : false} label="Locação" />
+            <Cb m={td ? d.modalidade === 'AMBOS' : false} label="V+L" />
+          </span>
+        </Row>
+
+        {/* Valor Locação + Área Útil + Área Total */}
+        <Row>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 42%' }}>
+            <span style={S.label}>Valor Locação R$:</span>
+            <span style={S.campo}>{td ? fmt(d.valorLocacao) : ''}</span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 29%' }}>
+            <span style={S.label}>Área Útil m²:</span>
+            <span style={S.campo}>{td && d.areaUtil ? String(d.areaUtil) : ''}</span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: 1 }}>
+            <span style={S.label}>Área Total m²:</span>
+            <span style={S.campo}>{td && d.areaTotal ? String(d.areaTotal) : ''}</span>
+          </span>
+        </Row>
+
+        {/* Condomínio + IPTU */}
+        <Row>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: '0 0 50%' }}>
+            <span style={S.label}>Cond. R$/mês:</span>
+            <span style={S.campo}>{td ? fmt(d.valorCondominio) : ''}</span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, flex: 1 }}>
+            <span style={S.label}>IPTU Mensal R$:</span>
+            <span style={S.campo}>{td ? fmt(d.valorIptu) : ''}</span>
+          </span>
+        </Row>
+
+        {/* Permuta + Doc + Financiamento */}
+        <CbRow mb={0}>
+          <Cb m={d.aceitaPermuta} label="Aceita Permuta" />
+          <Cb m={d.documentacaoOk} label="Documentação OK" />
+          <Cb m={d.aceitaFinanc} label="Aceita Financiamento" />
+        </CbRow>
+      </Sec>
+
+      {/* ── Seção 2: Dados do Imóvel ── */}
+      <Sec>
+        <SecTitle n={2} title="Dados do Imóvel" />
+
+        {/* Dormitórios / Suítes / Banheiros — underline */}
+        <Row>
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2 }}>
+            <span style={S.label}>Dorms:</span>
+            <span style={S.campoFixo(30)}>{td ? (DORMI_LABEL[d.dormitorios ?? ''] ?? d.dormitorios ?? '') : ''}</span>
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, marginLeft: 8 }}>
+            <span style={S.label}>Suítes:</span>
+            <span style={S.campoFixo(28)}>{td ? (SUITES_LABEL[d.suites ?? ''] ?? d.suites ?? '') : ''}</span>
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, marginLeft: 8 }}>
+            <span style={S.label}>Banheiros:</span>
+            <span style={S.campoFixo(28)}>{td ? (d.totalBanheiros ?? '') : ''}</span>
+          </span>
+        </Row>
+
+        {/* Situação */}
+        <CbRow label="Situação:">
+          <Cb m={td ? d.situacaoImovel === 'MOBILIADO' : false} label="Mobiliado" />
+          <Cb m={td ? d.situacaoImovel === 'SEMI_MOBILIADO' : false} label="Semi-Mob." />
+          <Cb m={td ? d.situacaoImovel === 'SEM_MOBILIA' : false} label="Sem Mob." />
+          <Cb m={td ? d.situacaoImovel === 'EM_REFORMA' : false} label="Em Reforma" />
+          <Cb m={td ? d.situacaoImovel === 'NA_PLANTA' : false} label="Na Planta" />
+        </CbRow>
+
+        {/* Vagas + Tipo Garagem — underline */}
+        <Row>
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2 }}>
+            <span style={S.label}>Vagas:</span>
+            <span style={S.campoFixo(28)}>{td ? (VAGAS_LABEL[d.vagasGaragem ?? ''] ?? d.vagasGaragem ?? '') : ''}</span>
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, marginLeft: 8 }}>
+            <span style={S.label}>Tipo Garagem:</span>
+            <span style={S.campoFixo(80)}>{td ? (GARAGEM_LABEL[d.tipoGaragem ?? ''] ?? d.tipoGaragem ?? '') : ''}</span>
+          </span>
+        </Row>
+
+        {/* Dependência + Vista Mar + Tipo */}
+        <CbRow mb={2}>
+          <Cb m={d.dependencia} label="Dependência" />
+          <Cb m={d.vistaMar} label="Vista Mar" />
+          <span style={{ ...S.label, marginLeft: 6, marginRight: 3 }}>Tipo Vista Mar:</span>
+          <Cb m={td ? d.tipoVistaMar === 'FRENTE' : false} label="Frontal" />
+          <Cb m={td ? d.tipoVistaMar === 'LATERAL' : false} label="Lateral" />
+          <Cb m={td ? (!d.tipoVistaMar && !!d.vistaMar) : false} label="Parcial" />
+        </CbRow>
+
+        {/* Facilidades do Imóvel — 3 colunas */}
+        <div style={{ marginBottom: 2 }}>
+          <span style={{ ...S.label, display: 'block', marginBottom: 1 }}>Facilidades do Imóvel:</span>
+          <FacilGrid
+            selected={facilImovel}
+            items={[
+              { id: 'ARMARIOS_QUARTOS', label: 'Armários Quartos' },
+              { id: 'COZ_PLANEJADA', label: 'Coz. Planejada' },
+              { id: 'VENTILADOR_TETO', label: 'Ventilador Teto' },
+              { id: 'AR_CONDICIONADO', label: 'Ar Condicionado' },
+              { id: 'VARANDA_GOURMET', label: 'Varanda Gourmet' },
+              { id: 'CHURRASQUEIRA', label: 'Churrasqueira' },
+            ]}
+          />
+        </div>
+
+        <Row mb={0}>
+          <span style={S.label}>Outros:</span>
+          <span style={S.campo}>{d.facilidadesImovelOutros ?? ''}</span>
+        </Row>
+      </Sec>
+
+      {/* ── Seção 3: Dados do Condomínio ── */}
+      <Sec>
+        <SecTitle n={3} title="Dados do Condomínio" />
+
+        {/* Acesso + Andar (mesma linha) */}
+        <Row>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+            <span style={{ ...S.label, marginRight: 3 }}>Acesso:</span>
+            <Cb m={td ? d.acesso === 'ELEVADOR' : false} label="Elevador" />
+            <Cb m={td ? d.acesso === 'ESCADAS' : false} label="Escada" />
+            <Cb m={td ? d.acesso === 'RAMPA' : false} label="Rampa" />
+            <Cb m={td ? d.acesso === 'TERREO' : false} label="Térreo" />
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, marginLeft: 10 }}>
+            <span style={S.label}>Andar:</span>
+            <span style={S.campoFixo(35)}>{td && d.andar != null ? String(d.andar) : ''}</span>
+          </span>
+        </Row>
+
+        {/* Facilidades do Condomínio — 3 colunas */}
+        <div style={{ marginBottom: 2 }}>
+          <span style={{ ...S.label, display: 'block', marginBottom: 1 }}>Facilidades do Condomínio:</span>
+          <FacilGrid
+            selected={facilCond}
+            items={[
+              { id: 'PISCINA', label: 'Piscina' },
+              { id: 'ACADEMIA', label: 'Academia' },
+              { id: 'SALAO_FESTAS', label: 'Salão de Festas' },
+              { id: 'SALAO_JOGOS', label: 'Salão de Jogos' },
+              { id: 'PLAYGROUND', label: 'Playground' },
+            ]}
+          />
+        </div>
+
+        <Row mb={0}>
+          <span style={S.label}>Outros:</span>
+          <span style={S.campo}>{d.facilidadesCondOutros ?? ''}</span>
+        </Row>
+      </Sec>
+
+      {/* ── Rodapé (1 linha, 7pt) ── */}
+      <div style={{
+        borderTop: '1px solid #ccc', paddingTop: 2, marginTop: 2,
+        fontSize: '7pt', color: '#666', textAlign: 'center', background: 'white',
+      }}>
+        Biocasa Santos — uso interno — {data}
+      </div>
+    </div>
+  )
+}
+
+// ─── Componente exportado: 2 fichas por folha A4 ────────────────────────────
+
+export default function FichaCaptacao({ dados }: { dados?: DadosImovelFicha }) {
   return (
     <>
       <style>{`
-        .ficha-captacao {
-          font-family: Arial, Helvetica, sans-serif;
-          font-size: 11px;
-          color: #000;
-          background: #fff;
-          width: 210mm;
-          min-height: 297mm;
-          margin: 0 auto;
-          padding: 12mm 14mm 10mm;
-          box-sizing: border-box;
-        }
-        .ficha-cabecalho {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          border-bottom: 2px solid #000;
-          padding-bottom: 8px;
-          margin-bottom: 10px;
-        }
-        .ficha-titulo {
-          text-align: center;
-          flex: 1;
-        }
-        .ficha-titulo h1 {
-          font-size: 15px;
-          font-weight: bold;
-          margin: 0;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-        }
-        .ficha-titulo p {
-          font-size: 10px;
-          margin: 2px 0 0;
-          color: #333;
-        }
-        .ficha-logo-area {
-          width: 60px;
-          text-align: right;
-          font-size: 10px;
-          font-weight: bold;
-          letter-spacing: 1px;
-        }
-        .ficha-secao {
-          margin-bottom: 8px;
-          border: 1px solid #aaa;
-          padding: 6px 8px;
-          border-radius: 2px;
-          page-break-inside: avoid;
-        }
-        .ficha-secao-titulo {
-          font-size: 10px;
-          font-weight: bold;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          border-bottom: 1px solid #ccc;
-          padding-bottom: 3px;
-          margin-bottom: 6px;
-        }
-        .ficha-linha {
-          display: flex;
-          align-items: baseline;
-          gap: 4px;
-          margin-bottom: 4px;
-          flex-wrap: nowrap;
-        }
-        .ficha-label {
-          font-size: 10px;
-          font-weight: bold;
-          white-space: nowrap;
-          flex-shrink: 0;
-        }
-        .ficha-campo {
-          flex: 1;
-          border-bottom: 1px solid #000;
-          min-width: 40px;
-          font-size: 11px;
-          padding: 0 2px;
-          display: inline-block;
-          min-height: 14px;
-        }
-        .ficha-grid-2 {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 0 12px;
-        }
-        .ficha-grid-3 {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 0 12px;
-        }
-        .ficha-checkboxes {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 4px 12px;
-          margin-bottom: 4px;
-          align-items: center;
-        }
-        .ficha-checkbox {
-          display: inline-flex;
-          align-items: center;
-          gap: 3px;
-          font-size: 10px;
-          white-space: nowrap;
-        }
-        .ficha-box {
-          display: inline-block;
-          width: 11px;
-          height: 11px;
-          border: 1px solid #000;
-          text-align: center;
-          line-height: 11px;
-          font-size: 9px;
-          flex-shrink: 0;
-        }
-        .ficha-box.marcado {
-          background: #000;
-          color: #fff;
-        }
-        .ficha-descricao {
-          border: 1px solid #aaa;
-          min-height: 70px;
-          padding: 3px;
-          font-size: 11px;
-          margin-top: 3px;
-          white-space: pre-wrap;
-        }
-        .ficha-rodape {
-          margin-top: 10px;
-          border-top: 1px solid #ccc;
-          padding-top: 5px;
-          display: flex;
-          justify-content: space-between;
-          font-size: 9px;
-          color: #555;
-        }
-        .ficha-outros {
-          display: flex;
-          align-items: baseline;
-          gap: 4px;
-          margin-top: 2px;
-        }
-        .ficha-outros-label {
-          font-size: 10px;
-          font-weight: bold;
-          white-space: nowrap;
-          flex-shrink: 0;
-        }
-        .ficha-outros-campo {
-          flex: 1;
-          border-bottom: 1px solid #000;
-          min-height: 14px;
-          font-size: 11px;
-          padding: 0 2px;
-        }
-
         @media print {
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          body > * { display: none !important; }
-          .ficha-captacao-wrapper { display: block !important; }
-          .ficha-captacao {
-            width: 100%;
-            margin: 0;
-            padding: 8mm 12mm;
+          * {
+            background: white !important;
+            background-color: white !important;
+            color: black !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
-          .ficha-box.marcado {
-            background: #000 !important;
-            color: #fff !important;
+          body, html {
+            background: white !important;
+          }
+          /* Preservar fundo cinza nos títulos de seção */
+          .ficha-secao-titulo {
+            background-color: #eee !important;
+            color: #000 !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 0;
           }
         }
       `}</style>
 
-      <div className="ficha-captacao">
-        {/* Cabeçalho */}
-        <div className="ficha-cabecalho">
-          <div style={{ width: 60, fontSize: 12, fontWeight: 'bold', letterSpacing: 1 }}>
-            BIOCASA
-          </div>
-          <div className="ficha-titulo">
-            <h1>Ficha de Captação de Imóvel</h1>
-            <p>{d.unidadeNome ? `${d.unidadeNome} · ` : ''}Data: {dataImpressao}</p>
-          </div>
-          <div style={{ width: 60 }} />
+      <div style={{ background: '#fff', maxWidth: '210mm', margin: '0 auto' }}>
+        <FichaUnica dados={dados} />
+
+        {/* Separador cortável */}
+        <div style={{
+          position: 'relative', textAlign: 'center',
+          borderTop: '1.5px dashed #888', margin: '3mm 0',
+          background: 'white',
+        }}>
+          <span style={{
+            position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
+            background: 'white', padding: '0 8px', fontSize: '13pt', lineHeight: '1', color: '#555',
+          }}>✂</span>
         </div>
 
-        {/* Seção 1 — Dados Comerciais */}
-        <div className="ficha-secao">
-          <div className="ficha-secao-titulo">1. Dados Comerciais</div>
-
-          <div className="ficha-grid-2">
-            <Linha label="Código de Referência" valor={d.codigoRef} />
-            <Linha label="Nome do Imóvel" valor={d.nome} />
-          </div>
-
-          <div className="ficha-checkboxes" style={{ marginBottom: 4 }}>
-            <span className="ficha-label" style={{ marginRight: 4 }}>Finalidade:</span>
-            <Checkbox marcado={temDados ? d.finalidade === 'RESIDENCIAL' : false} label="Residencial" />
-            <Checkbox marcado={temDados ? d.finalidade === 'COMERCIAL' : false} label="Comercial" />
-            <Checkbox marcado={temDados ? d.finalidade === 'RURAL' : false} label="Rural" />
-          </div>
-
-          <div className="ficha-checkboxes" style={{ marginBottom: 4 }}>
-            <span className="ficha-label" style={{ marginRight: 4 }}>Tipo:</span>
-            <Checkbox marcado={temDados ? d.tipo === 'APARTAMENTO' : false} label="Apartamento" />
-            <Checkbox marcado={temDados ? d.tipo === 'CASA' : false} label="Casa" />
-            <Checkbox marcado={temDados ? d.tipo === 'TERRENO' : false} label="Terreno" />
-            <Checkbox marcado={temDados ? (d.tipo === 'APARTAMENTO' && d.subtipo === 'KITNET_STUDIO') : false} label="Kitnet" />
-            <Checkbox marcado={false} label="Cobertura" />
-            <Checkbox marcado={false} label="Village" />
-            <Checkbox marcado={temDados ? d.tipo === 'LOJA' : false} label="Loja" />
-            <Checkbox marcado={false} label="Garagem" />
-            <Checkbox marcado={temDados ? d.tipo === 'CHACARA' : false} label="Chácara" />
-          </div>
-
-          <Linha
-            label="Subtipo"
-            valor={temDados && d.subtipo ? (SUBTIPO_LABEL[d.subtipo] ?? d.subtipo) : undefined}
-          />
-
-          <div className="ficha-grid-3">
-            <Linha label="CEP" valor={d.cep} />
-            <Linha label="Logradouro" valor={d.logradouro} />
-            <Linha label="Número" valor={d.numero} />
-          </div>
-
-          <div className="ficha-grid-2">
-            <Linha label="Complemento" valor={d.complemento} />
-            <Linha label="Bairro" valor={d.bairro} />
-          </div>
-
-          <div className="ficha-grid-3">
-            <Linha label="Cidade" valor={d.cidade} />
-            <Linha label="Estado" valor={d.estado} />
-            <Linha label="Edifício/Cond." valor={d.edificio} />
-          </div>
-
-          <div className="ficha-grid-2">
-            <Linha label="Proprietário" valor={d.proprietario} />
-            <Linha label="Contato" valor={d.telProprietario} />
-          </div>
-
-          <div className="ficha-grid-2">
-            <Linha label="Captador" valor={d.captador} />
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-              <Checkbox marcado={d.parceria} label="Parceria Imobiliária" />
-            </div>
-          </div>
-
-          <div className="ficha-checkboxes" style={{ marginBottom: 4 }}>
-            <span className="ficha-label" style={{ marginRight: 4 }}>Modalidade:</span>
-            <Checkbox marcado={temDados ? d.modalidade === 'VENDA' : false} label="Venda" />
-            <Checkbox marcado={temDados ? d.modalidade === 'LOCACAO' : false} label="Locação" />
-            <Checkbox marcado={temDados ? d.modalidade === 'AMBOS' : false} label="Venda + Locação" />
-          </div>
-
-          <div className="ficha-grid-2">
-            <Linha label="Valor de Venda (R$)" valor={temDados ? fmt(d.valorVenda) : undefined} />
-            <Linha label="Valor de Locação (R$)" valor={temDados ? fmt(d.valorLocacao) : undefined} />
-          </div>
-
-          <div className="ficha-grid-2">
-            <Linha label="Condomínio (R$/mês)" valor={temDados ? fmt(d.valorCondominio) : undefined} />
-            <Linha label="IPTU Mensal (R$)" valor={temDados ? fmt(d.valorIptu) : undefined} />
-          </div>
-
-          <div className="ficha-grid-2">
-            <Linha label="Área Útil (m²)" valor={temDados && d.areaUtil ? String(d.areaUtil) : undefined} />
-            <Linha label="Área Total (m²)" valor={temDados && d.areaTotal ? String(d.areaTotal) : undefined} />
-          </div>
-
-          <div className="ficha-checkboxes">
-            <Checkbox marcado={d.aceitaPermuta} label="Aceita Permuta" />
-            <Checkbox marcado={d.documentacaoOk} label="Documentação OK" />
-            <Checkbox marcado={d.aceitaFinanc} label="Aceita Financiamento" />
-          </div>
-        </div>
-
-        {/* Seção 2 — Dados do Imóvel */}
-        <div className="ficha-secao">
-          <div className="ficha-secao-titulo">2. Dados do Imóvel</div>
-
-          <div className="ficha-checkboxes" style={{ marginBottom: 4 }}>
-            <span className="ficha-label" style={{ marginRight: 4 }}>Dormitórios:</span>
-            <Checkbox marcado={temDados ? d.dormitorios === '1' : false} label="1" />
-            <Checkbox marcado={temDados ? d.dormitorios === '2' : false} label="2" />
-            <Checkbox marcado={temDados ? d.dormitorios === '3' : false} label="3" />
-            <Checkbox marcado={temDados ? d.dormitorios === '4' : false} label="4" />
-            <Checkbox marcado={temDados ? d.dormitorios === '4_MAIS' : false} label="5+" />
-            <Checkbox marcado={temDados ? d.dormitorios === 'KIT_STUDIO' : false} label="Kit/Studio" />
-          </div>
-
-          <div className="ficha-checkboxes" style={{ marginBottom: 4 }}>
-            <span className="ficha-label" style={{ marginRight: 4 }}>Suítes:</span>
-            <Checkbox marcado={temDados ? d.suites === 'NAO_TEM' : false} label="Não tem" />
-            <Checkbox marcado={temDados ? d.suites === '1' : false} label="1" />
-            <Checkbox marcado={temDados ? d.suites === '2' : false} label="2" />
-            <Checkbox marcado={temDados ? d.suites === '3_MAIS' : false} label="3+" />
-          </div>
-
-          <div className="ficha-checkboxes" style={{ marginBottom: 4 }}>
-            <span className="ficha-label" style={{ marginRight: 4 }}>Total de Banheiros:</span>
-            <Checkbox marcado={temDados ? d.totalBanheiros === '1' : false} label="1" />
-            <Checkbox marcado={temDados ? d.totalBanheiros === '2' : false} label="2" />
-            <Checkbox marcado={temDados ? d.totalBanheiros === '3' : false} label="3" />
-            <Checkbox marcado={temDados ? d.totalBanheiros === '4' : false} label="4+" />
-          </div>
-
-          <div className="ficha-checkboxes" style={{ marginBottom: 4 }}>
-            <span className="ficha-label" style={{ marginRight: 4 }}>Situação do Imóvel:</span>
-            <Checkbox marcado={temDados ? d.situacaoImovel === 'MOBILIADO' : false} label="Mobiliado" />
-            <Checkbox marcado={temDados ? d.situacaoImovel === 'SEMI_MOBILIADO' : false} label="Semi-Mobiliado" />
-            <Checkbox marcado={temDados ? d.situacaoImovel === 'SEM_MOBILIA' : false} label="Sem Mobília" />
-            <Checkbox marcado={temDados ? d.situacaoImovel === 'EM_REFORMA' : false} label="Em Reforma" />
-            <Checkbox marcado={temDados ? d.situacaoImovel === 'NA_PLANTA' : false} label="Na Planta" />
-          </div>
-
-          <div className="ficha-checkboxes" style={{ marginBottom: 4 }}>
-            <span className="ficha-label" style={{ marginRight: 4 }}>Vagas de Garagem:</span>
-            <Checkbox marcado={temDados ? d.vagasGaragem === 'SEM_VAGA' : false} label="Sem Vaga" />
-            <Checkbox marcado={temDados ? d.vagasGaragem === '1' : false} label="1" />
-            <Checkbox marcado={temDados ? d.vagasGaragem === '2' : false} label="2" />
-            <Checkbox marcado={temDados ? d.vagasGaragem === '3_MAIS' : false} label="3+" />
-          </div>
-
-          <div className="ficha-checkboxes" style={{ marginBottom: 4 }}>
-            <span className="ficha-label" style={{ marginRight: 4 }}>Tipo de Garagem:</span>
-            <Checkbox marcado={temDados ? d.tipoGaragem === 'FECHADA' : false} label="Box Fechado" />
-            <Checkbox marcado={temDados ? d.tipoGaragem === 'DEMARCADA' : false} label="Descoberta" />
-            <Checkbox marcado={temDados ? d.tipoGaragem === 'COLETIVA_SUF' : false} label="Coberta" />
-            <Checkbox marcado={temDados ? d.tipoGaragem === 'COLETIVA_INSUF' : false} label="Rotativa" />
-          </div>
-
-          <div className="ficha-checkboxes" style={{ marginBottom: 4 }}>
-            <Checkbox marcado={d.dependencia} label="Dependência" />
-            <Checkbox marcado={d.vistaMar} label="Vista Mar" />
-          </div>
-
-          <div className="ficha-checkboxes" style={{ marginBottom: 4 }}>
-            <span className="ficha-label" style={{ marginRight: 4 }}>Tipo de Vista Mar:</span>
-            <Checkbox marcado={temDados ? d.tipoVistaMar === 'FRENTE' : false} label="Frontal" />
-            <Checkbox marcado={temDados ? d.tipoVistaMar === 'LATERAL' : false} label="Lateral" />
-            <Checkbox marcado={temDados ? (d.vistaMar && !d.tipoVistaMar) || false : false} label="Parcial" />
-          </div>
-
-          <div style={{ marginBottom: 4 }}>
-            <span className="ficha-label">Facilidades do Imóvel:</span>
-            <div className="ficha-checkboxes" style={{ marginTop: 2 }}>
-              <Checkbox marcado={temDados ? facilImovel.includes('ARMARIOS_QUARTOS') : false} label="Armários Quartos" />
-              <Checkbox marcado={temDados ? facilImovel.includes('COZ_PLANEJADA') : false} label="Coz. Planejada" />
-              <Checkbox marcado={temDados ? facilImovel.includes('VENTILADOR_TETO') : false} label="Ventilador Teto" />
-              <Checkbox marcado={temDados ? facilImovel.includes('AR_CONDICIONADO') : false} label="Ar Condicionado" />
-              <Checkbox marcado={temDados ? facilImovel.includes('VARANDA_GOURMET') : false} label="Varanda Gourmet" />
-              <Checkbox marcado={temDados ? facilImovel.includes('CHURRASQUEIRA') : false} label="Churrasqueira" />
-            </div>
-            <div className="ficha-outros">
-              <span className="ficha-outros-label">Outros:</span>
-              <span className="ficha-outros-campo">{d.facilidadesImovelOutros ?? ''}</span>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 0 }}>
-            <span className="ficha-label">Descrição do Imóvel:</span>
-            <div className="ficha-descricao">{d.descricao ?? ''}</div>
-          </div>
-        </div>
-
-        {/* Seção 3 — Dados do Condomínio */}
-        <div className="ficha-secao">
-          <div className="ficha-secao-titulo">3. Dados do Condomínio</div>
-
-          <div className="ficha-checkboxes" style={{ marginBottom: 4 }}>
-            <span className="ficha-label" style={{ marginRight: 4 }}>Acesso:</span>
-            <Checkbox marcado={temDados ? d.acesso === 'ELEVADOR' : false} label="Elevador" />
-            <Checkbox marcado={temDados ? d.acesso === 'ESCADAS' : false} label="Escada" />
-            <Checkbox marcado={temDados ? d.acesso === 'RAMPA' : false} label="Rampa" />
-            <Checkbox marcado={temDados ? d.acesso === 'TERREO' : false} label="Térreo" />
-          </div>
-
-          <Linha label="Andar" valor={temDados && d.andar != null ? String(d.andar) : undefined} />
-
-          <div style={{ marginBottom: 0 }}>
-            <span className="ficha-label">Facilidades do Condomínio:</span>
-            <div className="ficha-checkboxes" style={{ marginTop: 2 }}>
-              <Checkbox marcado={temDados ? facilCond.includes('PISCINA') : false} label="Piscina" />
-              <Checkbox marcado={temDados ? facilCond.includes('ACADEMIA') : false} label="Academia" />
-              <Checkbox marcado={temDados ? facilCond.includes('SALAO_FESTAS') : false} label="Salão de Festas" />
-              <Checkbox marcado={temDados ? facilCond.includes('SALAO_JOGOS') : false} label="Salão de Jogos" />
-              <Checkbox marcado={temDados ? facilCond.includes('PLAYGROUND') : false} label="Playground" />
-            </div>
-            <div className="ficha-outros">
-              <span className="ficha-outros-label">Outros:</span>
-              <span className="ficha-outros-campo">{d.facilidadesCondOutros ?? ''}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Rodapé */}
-        <div className="ficha-rodape">
-          <span>Biocasa Santos — uso interno</span>
-          <span>Data de impressão: {dataImpressao}</span>
-        </div>
+        <FichaUnica dados={dados} />
       </div>
     </>
   )
