@@ -1,5 +1,5 @@
 # Portal Biocasa — Guia de Arquitetura para Claude Code
-*Atualizado: Maio 2026 (Hub Unificado Sessão 3: Dashboard Consolidado)*
+*Atualizado: Maio 2026 (Sessão 8: Ficha, Visualização, Busca)*
 
 Este arquivo documenta a arquitetura completa, decisões técnicas e convenções do projeto.
 
@@ -456,6 +456,45 @@ CHATWOOT_PLATFORM_TOKEN="<token de super-admin do Chatwoot>"
 - `CHATWOOT_PLATFORM_TOKEN` ausente → 503
 - `chatwootUserId` não configurado → 404 com mensagem amigável
 - Platform API falhou → 502
+
+## Sessão 8 — Ficha, Visualização, Busca (Maio 2026) ✅
+
+### Ficha de Captação (`FichaCaptacao.tsx`)
+- Espaçamento ajustado para caber em meia folha A4 (148mm): `lineHeight 1.58`, padding `2mm`, `mb=4` em Row/CbRow, `padding 3px` e `marginBottom 3` nas seções
+- Adicionado checkbox **Portaria 24Hrs** nas facilidades do condomínio
+
+### Paginação da Listagem de Imóveis
+- Adicionados botões **Primeira** e **Última** à paginação: `« Primeira | ← Anterior | Página X de X | Próxima → | Última »`
+- Botões desabilitados nas extremidades (`disabled:opacity-40 disabled:cursor-not-allowed`)
+
+### Visualização do Imóvel (`/imoveis/[id]`)
+- **Layout em grid** reorganizado por seções (substituiu layout linear):
+  - Card de identificação: Código + Nome + Badge Situação / Unidade + Captador
+  - Seção 1 — Dados Comerciais: grid 3 colunas com sub-grids para endereço e linha de 4 colunas (Cond/IPTU/Áreas)
+  - Seção 2 — Dados do Imóvel: grid 4 colunas + chips de facilidades (ativos = dourado, inativos = apagados) + descrição
+  - Seção 3 — Dados do Condomínio: grid 3 colunas + chips de facilidades
+  - Seção 4 — Dados Administrativos
+- **Endereço concatenado**: `Logradouro, Número - Complemento, Bairro, Cidade/Estado - CEP XXXXX-XXX` (campos opcionais omitidos sem separadores duplos)
+- **Parceria Imobiliária**: badge verde (`bg-green-600`) com `✓` no card de identificação; removido dos Dados Comerciais
+- **Badge Situação**: removido do cabeçalho de botões (mantido apenas no card de identificação)
+- **Compartilhar**: usa `linkExterno` em vez de `slug`; desabilitado com tooltip quando `linkExterno` não cadastrado
+- **Campos "Outros" de facilidades**: `parsearOutrosArray()` — cada item renderizado como chip individual
+- **Botão "Copiar Ficha"**: removido (substituído pela Ficha do Imóvel)
+- **Portaria 24Hrs**: adicionada como chip nas facilidades do condomínio
+
+### Formulário de Imóvel (`ImovelForm.tsx`)
+- **Portaria 24Hrs** adicionada ao array `FACILIDADES_COND`
+- **Botões do rodapé** reorganizados: `[Excluir] [Cancelar]` esquerda · `[Salvar] [Voltar]` direita
+
+### `lib/utils.ts` — Funções adicionadas
+| Função | Descrição |
+|--------|-----------|
+| `formatarTelefone(valor)` | Máscara `(XX) XXXXX-XXXX` ou `(XX) XXXX-XXXX` |
+| `parsearOutros(valor)` | Retorna string: array JSON → `join(', ')`, fallback literal |
+| `parsearOutrosArray(valor)` | Retorna `string[]`: array JSON → array filtrado, fallback array de 1 item |
+
+### API `GET /api/imoveis` — Busca Texto Livre
+- Expandida de 4 para 14 campos (ver subseção "Busca por Texto Livre" acima)
 
 ## Pendências / TODOs
 | # | Item | Prioridade |

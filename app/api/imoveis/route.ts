@@ -109,8 +109,10 @@ export async function GET(req: NextRequest) {
       { captador:     { contains: b, ...ci } },
       { edificio:     { contains: b, ...ci } },
       { acesso:       { contains: b, ...ci } },
-      { facilidadesImovel: { contains: b, ...ci } },
-      { facilidadesCond:   { contains: b, ...ci } },
+      { facilidadesImovel:      { contains: b, ...ci } },
+      { facilidadesImovelOutros: { contains: b, ...ci } },
+      { facilidadesCond:        { contains: b, ...ci } },
+      { facilidadesCondOutros:  { contains: b, ...ci } },
     ]
     const n = parseInt(b, 10)
     if (!isNaN(n)) {
