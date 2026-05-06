@@ -181,6 +181,16 @@ portal-biocasa/
 - Auth dupla: session NextAuth **ou** header `x-api-key: <API_KEY_N8N>` (para n8n)
 - MASTER vê todos; demais perfis veem apenas sua unidade
 
+#### Busca por Texto Livre (`busca`)
+Implementada como `OR` com `contains + mode: insensitive` (ILIKE) nos seguintes campos:
+
+| Campo Prisma | Condição |
+|---|---|
+| `codigoRef`, `nome`, `bairro`, `proprietario` | Sempre |
+| `logradouro`, `cidade`, `captador`, `edificio`, `acesso` | Sempre (adicionados Sessão 8) |
+| `facilidadesImovel`, `facilidadesCond` | Sempre — JSON serializado, `contains` direto na string |
+| `vagasGaragem`, `totalBanheiros` | Condicional — só quando `busca` é número válido (`!isNaN(parseInt)`) |
+
 ### POST /api/imoveis
 - Cria imóvel — MASTER, PROPRIETARIO, ASSISTENTE
 - ASSISTENTE/PROPRIETARIO: unidade fixada no token de sessão
