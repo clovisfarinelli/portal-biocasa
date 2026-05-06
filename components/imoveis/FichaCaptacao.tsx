@@ -145,11 +145,11 @@ function Cb({ m, label }: { m?: boolean | null; label: string }) {
   )
 }
 
-function Row({ children, mb = 4 }: { children: React.ReactNode; mb?: number }) {
+function Row({ children, mb = 3 }: { children: React.ReactNode; mb?: number }) {
   return <div style={{ ...S.row, marginBottom: mb }}>{children}</div>
 }
 
-function CbRow({ label, children, mb = 4 }: { label?: string; children: React.ReactNode; mb?: number }) {
+function CbRow({ label, children, mb = 3 }: { label?: string; children: React.ReactNode; mb?: number }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1px 0', marginBottom: mb }}>
       {label && <span style={{ ...S.label, marginRight: 4 }}>{label}</span>}
@@ -163,7 +163,7 @@ function SecTitle({ n, title }: { n: number; title: string }) {
     <div className="ficha-secao-titulo" style={{
       fontSize: '7pt', fontWeight: 'bold', textTransform: 'uppercase',
       background: '#eee', color: '#000', padding: '1px 4px',
-      marginBottom: 4, letterSpacing: 0.3,
+      marginBottom: 3, letterSpacing: 0.3,
     }}>
       {n}. {title}
     </div>
@@ -173,7 +173,7 @@ function SecTitle({ n, title }: { n: number; title: string }) {
 function Sec({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
-      border: '1px solid #bbb', padding: '4px 6px', marginBottom: 4,
+      border: '1px solid #bbb', padding: '3px 6px', marginBottom: 3,
       background: 'white',
     }}>
       {children}
@@ -209,17 +209,17 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
     <div style={{
       fontFamily: 'Arial, Helvetica, sans-serif',
       fontSize: '8pt',
-      lineHeight: '1.6',
+      lineHeight: '1.5',
       color: '#000',
       background: '#fff',
       width: '100%',
-      padding: '2mm 5mm 2mm',
+      padding: '1mm 5mm 1mm',
       boxSizing: 'border-box',
     }}>
       {/* ── Cabeçalho (1 linha) ── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        borderBottom: '2px solid #000', paddingBottom: 2, marginBottom: 4,
+        borderBottom: '2px solid #000', paddingBottom: 2, marginBottom: 3,
         background: 'white',
       }}>
         <span style={{ fontWeight: 'bold', fontSize: '10pt', letterSpacing: 1, color: '#000' }}>BIOCASA</span>
