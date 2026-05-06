@@ -143,48 +143,56 @@ MASTER já vê tudo de todas as unidades por design.
 
 ---
 
-## SESSÃO 5 — Dashboard MASTER Unificado (refatoração + auditoria)
-**Prioridade: ALTA — próxima sessão a executar**
+## SESSÃO 5 — Dashboard MASTER Unificado (refatoração + auditoria) ✅ CONCLUÍDA
+**Implementada em: Maio 2026**
 
-### Conceito
-O Dashboard vira o painel de controle completo do MASTER.
-A sidebar perde o item "Usuários" — tudo administrativo fica no Dashboard.
+### Conceito implementado
+O Dashboard (`/consolidado`) virou o painel de controle completo do MASTER com 4 abas.
+`DashboardMaster.tsx` gerencia as abas via `?aba=` na URL.
 
-### 5.1 — Refatorar layout do Dashboard
-- Transformar `/consolidado` em painel com 4 abas/seções:
-  - **Métricas** (já existe — manter)
-  - **Usuários** (mover gestão de usuários para cá)
-  - **Auditoria** (novo)
-  - **Configurações** (novo)
-- Remover item "Usuários" da sidebar para perfil MASTER
+### 5.1 — Refatorar layout do Dashboard ✅
+- `/consolidado` → `DashboardMaster.tsx` com 4 abas: Métricas, Usuários, Auditoria, Configurações
+- Aba Métricas: mantém `DashboardConsolidado.tsx`
+- Aba Usuários: usa `UserManagement.tsx`
+- Sidebar ainda exibe "Usuários" como fallback para não-MASTER
 
-### 5.2 — Tabela de logs de auditoria
-- Nova tabela `logs` no banco: `userId`, `acao`, `recurso`, `detalhe`, `ip`, `createdAt`
-- Registrar automaticamente: login, logout, análise gerada, imóvel criado/editado,
-  usuário convidado/desativado, exportações
-- Retenção: 12 meses
+### 5.2 — Tabela de logs de auditoria ✅
+- Tabela `logs_acesso` já existia; nova API `GET /api/logs` com filtros completos
+- Filtros: usuarioId, unidadeId, acao, recurso, dataInicio, dataFim, pagina
+- Retorna logs com dados do usuário (nome, email, perfil, unidade)
 
-### 5.3 — Aba Auditoria no Dashboard
-- Timeline de ações recentes (todas as unidades)
-- Filtros: por usuário, unidade, tipo de ação, período
-- Destaque visual para ações sensíveis (exportação, acesso a dados)
-- Alerta visual quando volume anormal detectado
+### 5.3 — Aba Auditoria no Dashboard ✅
+- `AbaAuditoria.tsx`: timeline de ações recentes com filtros
+- Filtros: por usuário, unidade, tipo de ação, período (dataInicio/dataFim)
+- Paginação de resultados
 
-### 5.4 — Alertas de segurança por email
-- Email para MASTER quando:
-  - Tentativas de login falhas repetidas (3+)
-  - Volume anormal de exportações (5+ em 1 hora)
-  - Login fora do horário comercial (configurável)
-  - Usuário acessa dados de IP diferente do habitual
+### 5.4 — Alertas de segurança por email ✅
+- `lib/alertas.ts`: `verificarLoginFalhou()` (3+ do mesmo IP em 10 min) e `verificarExportacaoAbusiva()` (5+ em 1h)
+- `lib/email.ts` (Resend): envia emails para todos os MASTERs ativos
+- `POST /api/logs/exportacao`: registra exportação e verifica abuso
+- **Não implementados ainda:** login fora do horário e mudança de IP habitual
 
-### 5.5 — Aba Configurações no Dashboard
-- Limites de análises por unidade
-- Configurações gerais do sistema
-- Parâmetros do Chatwoot
+### 5.5 — Aba Configurações no Dashboard ✅
+- `AbaConfiguracoes.tsx`: gestão de unidades (limite de análises, status, proprietário)
 
-### 5.6 — Marca d'água em exportações
-- PDFs de análises com nome do usuário + timestamp + marca Biocasa
-- Identifica origem em caso de vazamento
+### 5.6 — Marca d'água em exportações ✅
+- `ExportarPDF.tsx`: div `.watermark` com texto "BIOCASA" (visível apenas em `@media print`)
+
+### Adicional implementado (não planejado)
+- **Sistema de convites por email:** usuários podem ser criados via convite (sem senha inicial) usando Resend
+  - `conviteToken` + `conviteExpiraEm` na tabela `usuarios`
+  - `/api/usuarios/convite` (validar) + `/api/usuarios/convite/aceitar` (ativar)
+  - `/api/usuarios/[id]/reenviar-convite`
+- **Site público de imóveis (`imoveis.cf8.com.br`):**
+  - Route group `app/(site)/` com middleware de roteamento por hostname
+  - `BuscaHero.tsx`, `HeaderSite.tsx`, `GaleriaPublica.tsx`
+  - API `/api/imoveis/publico/*` sem autenticação
+- **Duplicar imóvel:** `POST /api/imoveis/[id]/duplicar` + `DuplicarButton.tsx`
+- **Gerar descrição com IA:** `POST /api/imoveis/gerar-descricao` (Gemini 2.5 Flash, 150–250 palavras)
+  - `ModalConfirmarDescricaoIA.tsx` para confirmar antes de sobrescrever
+- **Lightbox de fotos:** `Lightbox.tsx` com ESC + swipe
+- **Páginas de impressão:** route group `app/(imprimir)/` — ficha de captação e ficha do imóvel
+- **TagInput:** componente reutilizável para campos de tags/facilidades
 
 ---
 
@@ -248,6 +256,28 @@ A sidebar perde o item "Usuários" — tudo administrativo fica no Dashboard.
 - Interface sempre em Português do Brasil
 - Não mexer em Traefik, Portainer ou ERPNext sem necessidade
 
+## SESSÃO 9 — Relatórios de Imóveis, Filtros, Segurança Corretor ✅ CONCLUÍDA
+**Implementada em: Maio 2026**
+
+### 9.1 — Relatórios de Imóveis ✅
+- `/imoveis/relatorios` com sistema de 2 abas
+- Aba Gráficos: donut SVG (puro, sem dependência) para status + barras CSS para bairros e captadores
+- Aba Relatório: filtros + impressão via `window.open()` com HTML+CSS isolado do Next.js
+  - API `GET /api/imoveis/relatorios` (estatísticas) + `GET /api/imoveis/relatorios/impressao` (tabela)
+  - Agrupamento: Unidade → Captador → Modalidade
+
+### 9.2 — Filtros de listagem com sessionStorage ✅
+- Filtros da listagem `/imoveis` persistidos durante navegação interna
+- Prioridade: URL params > sessionStorage > vazio
+- Cleanup automático ao sair do módulo
+- Filtros iniciam vazios (removidos defaults VENDA/APARTAMENTO)
+
+### 9.3 — Segurança comercial do Perfil CORRETOR ✅
+- CORRETOR: somente leitura em todo o módulo de imóveis
+- Campos sensíveis ocultos: proprietário, telefone, codIptu, codMatricula, obsInternas, percComissao
+
+---
+
 ## Status das Sessões
 | Sessão | Descrição | Status |
 |--------|-----------|--------|
@@ -255,7 +285,8 @@ A sidebar perde o item "Usuários" — tudo administrativo fica no Dashboard.
 | 2 | Chatwoot no Portal | ✅ Concluída |
 | 3 | Dashboard Consolidado (MASTER) | ✅ Concluída |
 | 4 | LGPD e Conformidade | ✅ Concluída |
-| 5 | Dashboard MASTER Unificado (refatoração + auditoria) | ⏳ Pendente |
-| 6 | (a definir após Sessão 5) | ⏳ Pendente |
+| 5 | Dashboard MASTER Unificado + Site Público + Convites + Extras | ✅ Concluída |
+| 6 | (a definir) | ⏳ Pendente |
 | 7 | ERPNext no Portal | ⏳ Pendente |
 | 8 | Onboarding de Novas Unidades | ⏳ Pendente |
+| 9 | Relatórios de Imóveis, Filtros, Segurança Corretor | ✅ Concluída |

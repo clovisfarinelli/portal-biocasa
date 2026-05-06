@@ -1,5 +1,5 @@
 # Portal Biocasa — Guia de Arquitetura para Claude Code
-*Atualizado: Maio 2026 (Sessão 8: Ficha, Visualização, Busca)*
+*Atualizado: Maio 2026 (Sessão 9: Relatórios de Imóveis, Filtros, Segurança Corretor)*
 
 Este arquivo documenta a arquitetura completa, decisões técnicas e convenções do projeto.
 
@@ -7,10 +7,11 @@ Este arquivo documenta a arquitetura completa, decisões técnicas e convençõe
 Portal de **Análise de Viabilidade Imobiliária** com IA + **Módulo de Cadastro de Imóveis**, desenvolvido para a Biocasa.
 - Módulo de Incorporação: analisa imóveis e terrenos usando Google Gemini 2.5 Flash
 - Módulo de Imóveis: cadastro e gestão completa de imóveis para venda/locação
+- Site Público: portal de busca de imóveis em `imoveis.cf8.com.br` (sem autenticação)
 - Cinco perfis de acesso: MASTER, PROPRIETARIO, ESPECIALISTA, ASSISTENTE, CORRETOR
-- Documentos de referência por cidade melhoram análises com o tempo
+- Flags de acesso por módulo: `acessoImob` e `acessoIncorp` (para ESPECIALISTA, ASSISTENTE, CORRETOR)
 - Sistema de aprendizado baseado em validações dos usuários
-- Em produção: portal.cf8.com.br
+- Em produção: portal.cf8.com.br (dashboard) | imoveis.cf8.com.br (site público)
 
 ## Stack Técnica
 | Camada | Tecnologia | Versão |
@@ -18,12 +19,15 @@ Portal de **Análise de Viabilidade Imobiliária** com IA + **Módulo de Cadastr
 | Framework | Next.js App Router | 14.2.x |
 | Estilo | Tailwind CSS | 3.x |
 | Banco de dados | PostgreSQL + pgvector | 15 + 0.8.2 |
-| ORM | Prisma | 5.x |
+| ORM | Prisma | 5.22.x |
 | IA | Google Gemini 2.5 Flash | gemini-2.5-flash |
 | Autenticação | NextAuth.js | 4.x |
 | 2FA | otplib + qrcode | 13.x + 1.x |
 | Upload | Vercel Blob | 2.3.3 |
-| Compressão imagens | sharp | latest |
+| Compressão imagens | sharp | 0.34.x |
+| Email (convites + alertas) | Resend | 6.12.x |
+| Export Excel | xlsx | 0.18.x |
+| ZIP fotos | jszip | 3.10.x |
 | Deploy frontend | Vercel | — |
 | Deploy banco | Docker Swarm (VPS2) | — |
 
@@ -35,9 +39,13 @@ Portal de **Análise de Viabilidade Imobiliária** com IA + **Módulo de Cadastr
 | PROPRIETARIO | ✅ total | ✅ criar/editar/ver (sem DELETE) | ❌ | ✅ criar ESPECIALISTA/ASSISTENTE/CORRETOR |
 | ESPECIALISTA | ✅ chat (campos obrigatórios) | ❌ | ❌ | ❌ |
 | ASSISTENTE | ❌ | ✅ criar/editar/ver (sem DELETE) | ❌ | ❌ |
-| CORRETOR | ❌ | 👁 apenas leitura | ❌ | ❌ |
+| CORRETOR | ❌ | 👁 apenas leitura (campos sensíveis ocultos) | ❌ | ❌ |
 
 **Regras de unidade:** PROPRIETARIO, ASSISTENTE e CORRETOR só veem/editam imóveis da sua própria unidade.
+
+**Campos sensíveis ocultos para CORRETOR:** proprietário, telefone proprietário, código IPTU, código matrícula, observações internas, comissão.
+
+**Flags de módulo:** ESPECIALISTA, ASSISTENTE e CORRETOR precisam ter `acessoImob=true` ou `acessoIncorp=true` para acessar os respectivos módulos. MASTER e PROPRIETARIO têm acesso implícito a ambos.
 
 ## Infraestrutura
 
@@ -70,100 +78,185 @@ Portal de **Análise de Viabilidade Imobiliária** com IA + **Módulo de Cadastr
 ```
 portal-biocasa/
 ├── app/
-│   ├── (auth)/login/
-│   ├── (dashboard)/
+│   ├── (auth)/login/               # Página de login
+│   ├── (dashboard)/                # Portal autenticado (portal.cf8.com.br)
 │   │   ├── layout.tsx
-│   │   ├── chat/page.tsx           # Chat de análise (incorporação)
-│   │   ├── usuarios/page.tsx
-│   │   ├── treinar-ia/page.tsx     # MASTER apenas
-│   │   ├── analises-unidades/      # Análises (MASTER)
+│   │   ├── page.tsx                # Redirect para chat ou imoveis conforme perfil
+│   │   ├── acesso-negado/          # Página exibida quando sem permissão de módulo
+│   │   ├── analises-unidades/      # Análises por unidade (MASTER/PROPRIETARIO)
 │   │   ├── atendimento/            # Chatwoot iframe SSO
-│   │   └── consolidado/            # Dashboard Consolidado (MASTER)
-│   ├── api/
-│   │   ├── auth/[...nextauth]/
-│   │   ├── analises/               # CRUD + envio ao Gemini
-│   │   ├── analises/[id]/
-│   │   ├── arquivos/               # Upload Vercel Blob (incorporação)
-│   │   ├── arquivos/download/
-│   │   ├── cidades/
-│   │   ├── configuracoes/
-│   │   ├── diagnostico/
-│   │   ├── documentos/
-│   │   ├── logs-erro/
-│   │   ├── unidades/
-│   │   ├── usuarios/
-│   │   ├── chatwoot/
-│   │   │   └── redirect/           # GET — SSO via Platform API → redirect para Chatwoot
-│   │   ├── dashboard-consolidado/  # GET — métricas agregadas por unidade (MASTER)
-│   │   └── imoveis/                # ← NOVO
-│   │       ├── route.ts            # GET (lista + n8n + busca texto) + POST
-│   │       ├── fotos/
-│   │       │   └── download/       # GET — proxy autenticado (Blob privado)
+│   │   ├── chat/                   # Chat de análise (incorporação)
+│   │   ├── configurar-2fa/         # Setup 2FA para MASTER
+│   │   ├── consolidado/            # Dashboard MASTER (4 abas: métricas/usuários/auditoria/configs)
+│   │   ├── treinar-ia/             # Treinamento da IA (MASTER)
+│   │   ├── usuarios/               # Gestão de usuários (pode ser acessado via Dashboard tb)
+│   │   └── imoveis/
+│   │       ├── page.tsx            # Listagem com filtros + cards + paginação + sessionStorage
+│   │       ├── novo/page.tsx       # Formulário novo imóvel
+│   │       ├── relatorios/page.tsx # Relatórios: gráficos (donut+barras) + impressão A4
 │   │       └── [id]/
-│   │           ├── route.ts        # GET + PUT (incl. fotos) + DELETE
-│   │           └── fotos/
-│   │               ├── route.ts    # POST (upload+compress) + DELETE
-│   │               └── zip/route.ts # GET — download ZIP de todas as fotos
-├── app/(dashboard)/
-│   ├── imoveis/page.tsx            # Listagem com filtros + cards + paginação
-│   ├── imoveis/novo/page.tsx       # Formulário novo imóvel
-│   ├── imoveis/[id]/page.tsx       # Visualização completa (server component)
-│   └── imoveis/[id]/editar/        # Formulário edição + galeria de fotos
+│   │           ├── page.tsx        # Visualização completa
+│   │           └── editar/page.tsx # Formulário edição + galeria de fotos
+│   ├── (site)/                     # Site público de imóveis (imoveis.cf8.com.br)
+│   │   └── site/
+│   │       ├── layout.tsx
+│   │       ├── page.tsx            # Homepage com busca hero + listagem
+│   │       ├── BuscaHero.tsx       # Componente de busca (client)
+│   │       ├── HeaderSite.tsx      # Header público
+│   │       └── imoveis/
+│   │           └── [ref]/
+│   │               ├── page.tsx    # Detalhe público do imóvel (SSR)
+│   │               └── GaleriaPublica.tsx
+│   ├── (imprimir)/                 # Páginas de impressão (sem sidebar, layout limpo)
+│   │   ├── layout.tsx
+│   │   └── imprimir/
+│   │       ├── ficha-captacao/     # Ficha de captação para impressão
+│   │       │   ├── page.tsx
+│   │       │   └── FichaImpressaoClient.tsx
+│   │       └── imoveis/
+│   │           └── [id]/ficha/     # Ficha completa do imóvel para impressão
+│   └── api/
+│       ├── auth/[...nextauth]/
+│       ├── 2fa/
+│       │   ├── configurar/         # GET (status+QR) + POST (ativar) + DELETE (desativar)
+│       │   └── preflight/          # GET — verifica 2FA antes do login
+│       ├── admin/                  # Rota admin interna (MASTER)
+│       ├── analises/               # CRUD + envio ao Gemini
+│       ├── analises/[id]/          # Detalhe + validação
+│       ├── arquivos/               # Upload Vercel Blob (incorporação)
+│       ├── arquivos/download/      # Proxy autenticado para arquivos privados
+│       ├── chatwoot/
+│       │   ├── contas/             # GET — lista contas Chatwoot do usuário (MASTER)
+│       │   ├── redirect/           # GET — SSO via Platform API → redirect
+│       │   ├── session/            # GET — seta cookie de auth para iframe
+│       │   ├── sso/                # GET — retorna URL SSO one-time
+│       │   └── token/              # GET — retorna token Chatwoot do usuário atual
+│       ├── cidades/
+│       ├── configuracoes/          # GET/PUT câmbio e configs gerais
+│       ├── dashboard-consolidado/  # GET — métricas agregadas por unidade (MASTER)
+│       ├── diagnostico/            # GET — diagnóstico da API (?debug=biocasa2026)
+│       ├── documentos/
+│       ├── logs/
+│       │   ├── route.ts            # GET — logs de auditoria com filtros (MASTER)
+│       │   └── exportacao/route.ts # POST — registra exportação + verifica abuso
+│       ├── logs-erro/
+│       ├── unidades/
+│       ├── usuarios/
+│       │   ├── route.ts            # GET (lista) + POST (criar/convidar)
+│       │   ├── [id]/route.ts       # GET + PUT + DELETE (soft-delete)
+│       │   ├── [id]/reenviar-convite/
+│       │   ├── convite/route.ts    # GET — valida token de convite
+│       │   └── convite/aceitar/    # POST — aceita convite, define senha, cria no Chatwoot
+│       └── imoveis/
+│           ├── route.ts            # GET (lista + n8n + busca texto) + POST
+│           ├── gerar-descricao/    # POST — gera descrição com Gemini 2.5 Flash
+│           ├── fotos/download/     # GET — proxy autenticado fotos privadas (dashboard)
+│           ├── publico/            # GET — listagem pública (publicarSite=true, sem auth)
+│           │   ├── route.ts
+│           │   ├── fotos/route.ts  # GET — proxy de fotos para site público (sem auth)
+│           │   └── [ref]/route.ts  # GET — detalhe público por codigoRef
+│           ├── relatorios/
+│           │   ├── route.ts        # GET — estatísticas (total, porStatus, porBairro, porCorretor)
+│           │   └── impressao/      # GET — lista para impressão A4 com filtros e agrupamento
+│           └── [id]/
+│               ├── route.ts        # GET + PUT + DELETE
+│               ├── duplicar/       # POST — duplica imóvel (sem fotos)
+│               └── fotos/
+│                   ├── route.ts    # POST (upload+compress) + DELETE
+│                   └── zip/route.ts # GET — download ZIP de todas as fotos
 ├── components/
-│   ├── ChatInterface.tsx
-│   ├── ExportarPDF.tsx
-│   ├── LogoBiocasa.tsx
-│   ├── Providers.tsx
-│   ├── Sidebar.tsx
-│   ├── TreinarIA.tsx
-│   ├── UploadArquivos.tsx
-│   ├── UserManagement.tsx
-│   └── imoveis/                        # ← NOVO
-│       ├── ImovelForm.tsx              # Formulário completo (5 seções, client)
-│       ├── GaleriaFotos.tsx            # Upload + drag-reorder + Salvar Ordem
-│       ├── GerenciarFotosModal.tsx     # Modal com galeria (ESC/click-outside/scroll lock)
-│       └── CopiarFichaButton.tsx       # Botão copiar ficha WhatsApp (client)
+│   ├── AbaAuditoria.tsx            # Aba de logs de auditoria com filtros (Dashboard MASTER)
+│   ├── AbaConfiguracoes.tsx        # Aba de gestão de unidades/configs (Dashboard MASTER)
+│   ├── AnalisesUnidades.tsx        # Listagem de análises (MASTER/PROPRIETARIO)
+│   ├── ChatInterface.tsx           # Chat principal com Gemini
+│   ├── ChatwootEmbed.tsx           # Iframe Chatwoot com SSO
+│   ├── DashboardConsolidado.tsx    # Aba de métricas (usada dentro do DashboardMaster)
+│   ├── DashboardMaster.tsx         # Dashboard MASTER: 4 abas (Métricas/Usuários/Auditoria/Configs)
+│   ├── ExportarPDF.tsx             # Exportação de análises em PDF (com marca d'água BIOCASA)
+│   ├── LayoutPrincipal.tsx         # Layout reutilizável para páginas internas
+│   ├── LogoBiocasa.tsx             # Placeholder SVG do logo
+│   ├── ModalConfirmarDescricaoIA.tsx # Modal de confirmação da descrição gerada por IA
+│   ├── Providers.tsx               # SessionProvider + theme
+│   ├── Sidebar.tsx                 # Sidebar de navegação (responsiva)
+│   ├── TagInput.tsx                # Input de tags reutilizável
+│   ├── TreinarIA.tsx               # Interface de treinamento da IA
+│   ├── UploadArquivos.tsx          # Dropzone (IPTU + outros documentos)
+│   ├── UserManagement.tsx          # Gestão de usuários (usada na aba Usuários do Dashboard)
+│   └── imoveis/
+│       ├── CompartilharButton.tsx  # Copia linkExterno para área de transferência
+│       ├── CopiarFichaButton.tsx   # Botão copiar ficha WhatsApp
+│       ├── CopiarTextoButton.tsx   # Botão copiar texto genérico
+│       ├── DuplicarButton.tsx      # Botão duplicar imóvel (sem fotos)
+│       ├── FichaCaptacao.tsx       # Ficha de captação para impressão (meia folha A4)
+│       ├── GaleriaFotos.tsx        # Upload + drag-reorder + Salvar Ordem
+│       ├── GaleriaPublica.tsx      # Galeria para site público (sem auth)
+│       ├── GerenciarFotosModal.tsx # Modal fullscreen de galeria
+│       ├── ImovelForm.tsx          # Formulário completo (5 seções, client)
+│       └── Lightbox.tsx            # Lightbox de fotos (ESC + swipe)
 ├── lib/
-│   ├── auth.ts
-│   ├── gemini.ts
-│   ├── prisma.ts
-│   └── utils.ts
+│   ├── alertas.ts                  # Detecção de logins falhos + exports abusivos → email
+│   ├── auth.ts                     # NextAuth + JWT (perfil, unidadeId, 2FA, acessoImob/Incorp)
+│   ├── chatwoot.ts                 # Funções de integração com Chatwoot Platform API
+│   ├── email.ts                    # Resend — envio de convites e alertas de segurança
+│   ├── gemini.ts                   # Gemini 2.5 Flash + busca de contexto para incorporação
+│   ├── logs.ts                     # registrarLog() para tabela logs_acesso
+│   ├── prisma.ts                   # Singleton do PrismaClient
+│   ├── rateLimit.ts                # Rate limiting sem dependência externa
+│   ├── slug.ts                     # gerarSlugImovel() para URLs amigáveis
+│   └── utils.ts                    # formatarMoeda, formatarTelefone, parsearOutros, etc.
 ├── prisma/
 │   ├── schema.prisma
 │   └── seed.ts
 ├── types/
-│   └── next-auth.d.ts              # ← NOVO — tipos dos 5 perfis
-└── middleware.ts
+│   └── next-auth.d.ts              # Tipos: 5 perfis, acessoImob, acessoIncorp, totpAtivado
+└── middleware.ts                   # Roteamento hostname + auth + 2FA + flags de módulo
 ```
 
 ## Banco de Dados
 
 ### Tabelas
-- unidades → franquias/filiais
-- usuarios → MASTER | PROPRIETARIO | ESPECIALISTA | ASSISTENTE | CORRETOR
-- cidades → unique: nome + estado
-- documentos_ia → treinamento com embedding vector(768)
-- analises → histórico com tokens e custo
-- arquivos_analise → arquivos anexados (cascade delete)
-- aprendizados → resumos válidos com embedding
-- configuracoes → chave/valor (câmbio, etc)
-- logs_erro → erros de API
-- logs_acesso → auditoria de ações (login, análises, uploads, criação de usuários, configurações) ← NOVO (Sessão 1)
-- **imoveis** → cadastro completo de imóveis
+| Tabela | Descrição |
+|--------|-----------|
+| unidades | Franquias/filiais |
+| usuarios | 5 perfis + 2FA + Chatwoot + convite |
+| cidades | Único: nome + estado |
+| documentos_ia | Treinamento com embedding vector(768) |
+| analises | Histórico com tokens e custo |
+| arquivos_analise | Arquivos anexados (cascade delete) |
+| aprendizados | Resumos válidos com embedding |
+| configuracoes | Chave/valor (câmbio, etc) |
+| logs_erro | Erros de API |
+| logs_acesso | Auditoria de ações com IP |
+| imoveis | Cadastro completo de imóveis |
+
+### Model Usuario — campos relevantes
+```prisma
+id, nome, email, senhaHash, perfil, unidadeId
+ativo, acessoImob, acessoIncorp
+totpSecret, totpAtivado, totpGraceExpiraEm    # 2FA
+chatwootUserId (Int?), chatwootAccountId (Int?), chatwootToken (String?)
+conviteToken (String? unique), conviteExpiraEm (DateTime?)
+```
+
+**Nota:** NÃO existem campos `consentimentoEm` ou `consentimentoIp` no schema atual.
 
 ### Model Imovel — campos principais
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
-| codigoRef | String unique | Código Kenlo (ex: AP17597) |
+| codigoRef | String @unique | Código Kenlo (ex: AP17597) |
 | finalidade | String | RESIDENCIAL, COMERCIAL |
 | tipo | String | CASA, APARTAMENTO, TERRENO, CHACARA, SALA, LOJA, CASA_COMERCIAL, GALPAO |
-| subtipo | String? | Para casa: ISOLADA, SOBRADO, etc. |
+| subtipo | String? | Para casa: ISOLADA, SOBRADO, SOBREPOSTA_ALTA, SOBREPOSTA_BAIXA, VILLAGGIO, etc. |
 | modalidade | String | VENDA, LOCACAO, AMBOS |
 | situacao | String | DISPONIVEL, VENDIDO, ALUGADO |
-| fotos | String? (Text) | JSON array: [{url, ordem, principal}] |
-| facilidadesImovel | String? | JSON array de facilidades |
-| facilidadesCond | String? | JSON array de facilidades condomínio |
+| fotos | String? @db.Text | JSON array: [{url, ordem, principal}] |
+| facilidadesImovel | String? | JSON array de facilidades do imóvel |
+| facilidadesCond | String? | JSON array de facilidades do condomínio (inclui PORTARIA_24HRS) |
+| facilidadesImovelOutros | String? | JSON array de facilidades extras (texto livre) |
+| facilidadesCondOutros | String? | JSON array de facilidades extras do cond |
+| slug | String? @unique | URL amigável gerada automaticamente |
 | unidadeId | String | FK → unidades |
+| publicarSite | Boolean | Exibir no site público imoveis.cf8.com.br |
 
 ### Relações
 - Usuario → Unidade (N:1)
@@ -171,7 +264,25 @@ portal-biocasa/
 - Analise → ArquivoAnalise (1:N, cascade delete)
 - Analise → Aprendizado (1:1)
 - DocumentoIa → Cidade (nullable = global)
-- **Imovel → Unidade (N:1)** ← NOVO
+- Imovel → Unidade (N:1)
+
+## Middleware — Roteamento e Proteção
+
+O `middleware.ts` cobre três camadas:
+
+### 1. Roteamento por hostname (Site Público)
+- Se `host === 'imoveis.cf8.com.br'`: reescreve `/` → `/site`, `/imoveis/[ref]` → `/site/imoveis/[ref]`
+- Arquivos estáticos e rotas `/api/` passam sem reescrita
+- Rotas `/site/*` passam sem autenticação
+
+### 2. API pública de imóveis
+- `/api/imoveis/publico/*` passa sem autenticação (listagem e detalhe público)
+
+### 3. Rotas protegidas
+- Sem token → redirect `/login` (pages) ou 401 (API)
+- 2FA enforçado para MASTER após período de carência (24h)
+- Módulo Imóveis: `/imoveis/*` e `/api/imoveis/*` exigem `acessoImob=true` para não-admins
+- Módulo Incorporação: `/chat/*` e `/api/analises/*` exigem `acessoIncorp=true` para não-admins
 
 ## API Endpoints — Módulo de Imóveis
 
@@ -182,20 +293,20 @@ portal-biocasa/
 - MASTER vê todos; demais perfis veem apenas sua unidade
 
 #### Busca por Texto Livre (`busca`)
-Implementada como `OR` com `contains + mode: insensitive` (ILIKE) nos seguintes campos:
+Implementada como `OR` com `contains + mode: insensitive` (ILIKE):
 
 | Campo Prisma | Condição |
 |---|---|
 | `codigoRef`, `nome`, `bairro`, `proprietario` | Sempre |
-| `logradouro`, `cidade`, `captador`, `edificio`, `acesso` | Sempre (adicionados Sessão 8) |
-| `facilidadesImovel`, `facilidadesCond` | Sempre — JSON serializado, `contains` direto na string |
+| `logradouro`, `cidade`, `captador`, `edificio`, `acesso` | Sempre |
+| `facilidadesImovel`, `facilidadesCond`, `facilidadesImovelOutros`, `facilidadesCondOutros` | Sempre — JSON serializado |
 | `vagasGaragem`, `totalBanheiros` | Condicional — só quando `busca` é número válido (`!isNaN(parseInt)`) |
 
 ### POST /api/imoveis
 - Cria imóvel — MASTER, PROPRIETARIO, ASSISTENTE
-- ASSISTENTE/PROPRIETARIO: unidade fixada no token de sessão
+- ASSISTENTE/PROPRIETARIO: unidade fixada no token
 - MASTER: pode informar `unidadeId` no body
-- Auto-gera `linkSite` = `/imovel/{codigoRef}` se não informado
+- Auto-gera `linkSite` = `/imovel/{codigoRef}` e `slug` se não informados
 - Retorna 409 se `codigoRef` já existe
 
 ### GET /api/imoveis/[id]
@@ -203,19 +314,45 @@ Implementada como `OR` com `contains + mode: insensitive` (ILIKE) nos seguintes 
 - Restrição por unidade para não-MASTER
 
 ### PUT /api/imoveis/[id]
-- Edição parcial — MASTER, PROPRIETARIO, ASSISTENTE
+- Edição parcial — MASTER, PROPRIETARIO, ASSISTENTE (CORRETOR não pode)
 - Schema Zod `.strict()` — rejeita campos desconhecidos
 - Usado também pelo Salvar Ordem da galeria (envia apenas `fotos`)
 
 ### DELETE /api/imoveis/[id]
 - Exclusão — apenas MASTER
 
+### POST /api/imoveis/[id]/duplicar
+- Duplica o imóvel — MASTER, PROPRIETARIO, ASSISTENTE
+- Cria cópia com `codigoRef` incrementado (`AP001` → `AP001-COPIA`), sem fotos
+- Novo slug gerado automaticamente
+- Registra log `imovel_duplicado`
+
+### POST /api/imoveis/gerar-descricao
+- Gera descrição de marketing com Gemini 2.5 Flash
+- Recebe dados do imóvel (tipo, área, quartos, bairro, etc.)
+- Retorna texto de 150–250 palavras, 3–4 parágrafos, sem clichês
+- `maxOutputTokens: 2048`, `temperature: 0.7`
+
+### GET /api/imoveis/publico
+- Listagem pública — sem autenticação
+- Filtra automaticamente `publicarSite=true`
+- Paginação: 12 por página
+- Filtros: `tipo`, `modalidade`, `busca`, `cidade`, `bairro`, `quartos_min`, `suites_min`, `vagas_min`, `valor_max`, `destaque`
+
+### GET /api/imoveis/publico/[ref]
+- Detalhe público por `codigoRef` — sem autenticação
+- Requer `publicarSite=true`
+
+### GET /api/imoveis/publico/fotos
+- Proxy de fotos para o site público — sem autenticação
+- Query param: `url` (URL do Blob privado)
+- `Cache-Control: public, max-age=3600`
+
 ### POST /api/imoveis/[id]/fotos
 - Upload via `multipart/form-data` (campo `foto`)
 - Comprime com **sharp** → WebP, max 1920×1920px, qualidade 80
 - Salva no Vercel Blob (private) em `/imoveis/{id}/`
 - Primeira foto vira principal automaticamente
-- Retorna `{ foto, fotos }`
 
 ### DELETE /api/imoveis/[id]/fotos
 - Body: `{ url: "https://..." }`
@@ -223,58 +360,279 @@ Implementada como `OR` com `contains + mode: insensitive` (ILIKE) nos seguintes 
 - Renumera ordens; promove nova principal se necessário
 
 ### GET /api/imoveis/[id]/fotos/zip
-- Download ZIP de todas as fotos do imóvel
-- Auth: session NextAuth — restrição por unidade para não-MASTER
-- Usa **JSZip** (tipo `arraybuffer` para compatibilidade com NextResponse)
-- Arquivos nomeados `{codigoRef}_{n}.webp`
-- Retorna com `Content-Disposition: attachment; filename="{codigoRef}-fotos.zip"`
+- Download ZIP de todas as fotos — auth session, restrição por unidade
+- Usa **JSZip** (arraybuffer); arquivos nomeados `{codigoRef}_{n}.webp`
+
+### GET /api/imoveis/fotos/download
+- Proxy autenticado para fotos privadas do Vercel Blob (dashboard)
+- Query param: `url` (URL do blob)
+
+### GET /api/imoveis/relatorios
+- Estatísticas para gráficos — MASTER, PROPRIETARIO
+- MASTER: todas as unidades; PROPRIETARIO: apenas sua unidade
+- Retorna: `{ total, porStatus, porBairro (top 10), porCorretor }`
+
+### GET /api/imoveis/relatorios/impressao
+- Lista para relatório imprimível — MASTER, PROPRIETARIO
+- Filtros: `unidadeId`, `modalidade`, `tipo`, `cidade`, `captador`
+- OrderBy: Unidade → Captador → Modalidade → Tipo → Cidade → Bairro
+- Retorna: `{ imoveis, filtrosAplicados, total, geradoEm }`
 
 ### GET /api/imoveis/fotos/download
 - Proxy autenticado para fotos privadas do Vercel Blob
-- Query param: `url` (URL do blob)
-- Busca com `Authorization: Bearer ${BLOB_READ_WRITE_TOKEN}` e repassa ao cliente
+- Query param: `url`
+
+## API Endpoints — Logs e Auditoria
+
+### GET /api/logs
+- Logs de auditoria com filtros — MASTER
+- Filtros: `usuarioId`, `unidadeId`, `acao`, `recurso`, `dataInicio`, `dataFim`, `pagina`
+- Retorna: `{ logs, total, pagina, porPagina, usuarios, unidades }`
+
+### POST /api/logs/exportacao
+- Registra exportação de análise + verifica abuso (via `lib/alertas.ts`)
+- Dispara email para MASTERs se 5+ exports em 1 hora
+
+## API Endpoints — Usuários e Convites
+
+### GET /api/usuarios/convite?token=xxx
+- Valida token de convite — sem autenticação
+- Retorna: nome, email; erro 404 ou 410 (expirado)
+
+### POST /api/usuarios/convite/aceitar
+- Aceita convite, define senha, cria usuário no Chatwoot
+- Body: `{ token, senha }`
+
+### POST /api/usuarios/[id]/reenviar-convite
+- Reenvio de convite por email — MASTER, PROPRIETARIO
 
 ## Autenticação
 
-### Perfis e permissões (completo)
+### Perfis e permissões completo
 | Ação | MASTER | PROPRIETARIO | ESPECIALISTA | ASSISTENTE | CORRETOR |
 |------|--------|-------------|-------------|------------|----------|
 | Ver todas as análises | ✅ | ❌ só unidade | ❌ só próprias | ❌ | ❌ |
 | Criar usuário qualquer perfil | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Criar ESPECIALISTA/ASSISTENTE/CORRETOR | ✅ | ✅ sua unidade | ❌ | ❌ | ❌ |
+| Convidar usuário por email | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Treinar IA | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Configurar câmbio | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Chat campos obrigatórios | ❌ | ❌ | ✅ | ❌ | ❌ |
 | Cadastrar/editar imóvel | ✅ | ✅ | ❌ | ✅ | ❌ |
 | Ver imóvel | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Ver campos sensíveis do imóvel | ✅ | ✅ | ❌ | ✅ | ❌ |
 | Excluir imóvel | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Upload fotos | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Ver relatórios | ✅ | ✅ | ❌ | ❌ | ❌ |
 
-## Integração Gemini (módulo incorporação)
+## Integração Gemini
 
-### Modelo atual
-- gemini-2.5-flash
-- maxOutputTokens: 8192
-- temperature: 0.7
+### Módulo Incorporação
+- gemini-2.5-flash, maxOutputTokens: 8192, temperature: 0.7
+- Contexto: documentos globais + documentos da cidade + aprendizados recentes (últimos 3)
+- Histórico completo multiturno
 
-### Fluxo de contexto
-1. Documentos globais ativos
-2. Documentos da cidade
-3. Aprendizados recentes da cidade (últimos 3)
-4. Contexto injetado na primeira mensagem
-5. Histórico completo multiturno
+### Módulo Imóveis — Gerar Descrição
+- gemini-2.5-flash, maxOutputTokens: 2048, temperature: 0.7
+- System instruction: Copywriter Imobiliário Especialista
+- Saída: 150–250 palavras, 3–4 parágrafos (sem clichês, sem listas)
+- Modal de confirmação antes de sobrescrever descrição existente
 
-### Cálculo de custo
-- custo_usd = (tokens_input * 0.10 + tokens_output * 0.40) / 1_000_000
-- custo_brl = custo_usd * cambio (lido da tabela configuracoes)
+### Cálculo de custo (incorporação)
+- `custo_usd = (tokens_input * 0.10 + tokens_output * 0.40) / 1_000_000`
+- `custo_brl = custo_usd * cambio` (lido da tabela configuracoes)
 
 ## Upload de Arquivos
 
 ### Vercel Blob
 - Store: portal-biocasa-blob (região GRU1 São Paulo)
-- Incorporação: `access: 'private'`, proxy autenticado `/api/arquivos/download`
-- **Imóveis (fotos): `access: 'private'`**, pasta `/imoveis/{id}/`, proxy `/api/imoveis/fotos/download`
+- Incorporação: `access: 'private'`, proxy `/api/arquivos/download`
+- Imóveis (fotos): `access: 'private'`, pasta `/imoveis/{id}/`, proxy `/api/imoveis/fotos/download` (dashboard) ou `/api/imoveis/publico/fotos` (site público — sem auth)
 - Versão @vercel/blob: 2.3.3
+
+## Sistema de Convites
+
+### Fluxo
+1. MASTER/PROPRIETARIO cria usuário no painel → sem informar senha → email enviado via Resend
+2. Email contém link com `conviteToken` (UUID, expira em 7 dias)
+3. Usuário acessa o link → página pública de aceite
+4. Define senha → backend valida token, faz hash, ativa usuário
+5. Se `chatwootUserId` null → backend chama `criarUsuarioChatwoot()` automaticamente
+
+### Reenvio
+- Botão "Reenviar Convite" disponível enquanto usuário não aceitou (conviteToken ainda existe)
+- `POST /api/usuarios/[id]/reenviar-convite` — gera novo token e reenvia email
+
+## Alertas de Segurança (lib/alertas.ts)
+
+Detecta comportamentos suspeitos e envia emails para todos os MASTERs ativos via Resend.
+
+| Evento | Gatilho | Lib |
+|--------|---------|-----|
+| Logins falhos repetidos | 3+ logins do mesmo IP em 10 min | `verificarLoginFalhou()` |
+| Exportações abusivas | 5+ exports em 1 hora | `verificarExportacaoAbusiva()` |
+
+## Site Público de Imóveis (app/(site))
+
+### Configuração
+- Domínio: `imoveis.cf8.com.br`
+- Middleware: rewrites todo o tráfego para `/site/*` (transparente para o usuário)
+- Sem autenticação — somente imóveis com `publicarSite=true` são exibidos
+
+### Páginas
+- `/` → homepage com `BuscaHero` (busca por tipo/cidade/quartos) + grid de cards
+- `/imoveis/[ref]` → detalhe do imóvel: galeria lightbox, dados completos, sem campos administrativos
+
+### Fotos públicas
+- `/api/imoveis/publico/fotos?url=...` — proxy sem auth, cache 1h
+- `GaleriaPublica.tsx` — galeria com miniatura + lightbox, sem autenticação
+
+## Páginas de Impressão (app/(imprimir))
+
+### Layout
+- Route group `(imprimir)`: layout limpo sem sidebar, otimizado para `@media print`
+- Todas as rotas são protegidas por autenticação (exceto `/imprimir/ficha-captacao` para CORRETOR)
+
+### Ficha de Captação
+- URL: `/imprimir/ficha-captacao?id={imovelId}` ou via ImovelForm
+- `FichaImpressaoClient.tsx`: busca dados, renderiza para impressão meia folha A4 (148mm)
+- Campos sensíveis visíveis somente para MASTER/PROPRIETARIO/ASSISTENTE
+
+### Relatório de Imóveis (Impressão)
+- Gerado via `window.open()` na aba de relatórios — não usa `(imprimir)`
+- HTML com CSS inline, agrupamento Unidade → Captador → Modalidade
+- `@page { size: A4 portrait; margin: 1.5cm }`, tabela com `table-layout: fixed`
+
+## Módulo de Imóveis — Interface e Componentes
+
+### Listagem `/imoveis` — Filtros, Cards e Persistência
+- **Linha 1:** Modalidade | Tipo | Dormitórios | Faixa de Valor | Cidade | Bairro
+- **Linha 2:** Busca livre (flex-1) | Ordenar por | Filtrar | Limpar
+- **Persistência:** `sessionStorage` (chave `biocasa:imoveis:filtros`)
+  - Filtros salvos ao clicar Filtrar ou mudar página
+  - Restaurados ao retornar via botão Voltar do detalhe/edição
+  - Limpados ao navegar para fora do módulo (sidebar, etc.)
+  - Filtros iniciam **vazios** por padrão (sem valores padrão)
+- **Navegação interna** marcada com `navegandoInternamente.current = true` em: Ver, Editar, Novo Imóvel, Relatórios
+
+### Relatórios `/imoveis/relatorios` — Duas Abas
+**Aba Gráficos:**
+- Donut SVG (puro, sem lib externa): status dos imóveis com legenda
+- Barras CSS horizontais: top 10 bairros + captadores
+- Fichas: link para impressão da ficha de captação
+
+**Aba Relatório de Imóveis:**
+- Filtros (ocultos na impressão): Unidade (MASTER) | Modalidade | Tipo | Cidade | Captador
+- Botão "Imprimir": abre `window.open()` com HTML+CSS completo e chama `print()`
+- Agrupamento: **Unidade → Captador → Modalidade** (Maps aninhados)
+- `page-break-inside: avoid` somente no nível do captador (não da unidade)
+
+### Formulário `ImovelForm.tsx` — 5 Seções
+1. Identificação e Classificação — codigoRef, tipo, finalidade, modalidade, situacao, destaque, publicarSite, parceria
+2. Endereço — CEP (auto-fill ViaCEP) → Logradouro → Nº → Complemento → Bairro → Cidade → Estado → Edifício
+3. Detalhes Técnicos — áreas, quartos, suítes, banheiros, garagem, facilidades, descrição + botão "Gerar com IA"
+4. Dados Comerciais — valorVenda/Locacao/Condominio/IPTU (máscaras BRL), proprietário, telefone, comissão, links, obsInternas
+5. Fotos — contador; botões: "Baixar Fotos" (ZIP) + "Gerenciar Fotos" (modal)
+
+**Campos sensíveis ocultos para CORRETOR:** proprietário, telefone, codIptu, codMatricula, obsInternas, percComissao.
+
+**Botões do rodapé:** `[Excluir] [Cancelar]` esquerda · `[Salvar] [Voltar]` direita.
+
+**Máscaras:** BRL (armazena float, exibe formatado), telefone (detecta celular pelo 3º dígito `=== '9'`), CEP (auto-fill ViaCEP ao atingir 8 dígitos).
+
+### `GaleriaFotos.tsx`
+- Dropzone (react-dropzone) para upload
+- HTML5 drag-and-drop nativo para reordenação lazy
+- Banner amarelo "Salvar Ordem" aparece ao arrastar; PUT imediato ao confirmar
+- `readOnly` mode para a página de detalhes
+- `onFotosChange?` callback notifica o pai
+
+### `GerenciarFotosModal.tsx`
+- Modal fullscreen (z-50), fecha com ESC/overlay/botão X
+- Bloqueia scroll do body enquanto aberto
+- Header mostra contador atualizado via `onFotosChange`
+
+### Página de Detalhes `/imoveis/[id]`
+- 4 seções em grid: Dados Comerciais | Dados do Imóvel | Dados do Condomínio | Dados Administrativos
+- Chips de facilidades: ativos = dourado, inativos = apagados
+- Parceria: badge verde com `✓` no card de identificação
+- Compartilhar: usa `linkExterno`; desabilitado com tooltip se não cadastrado
+- Botões: Editar | Duplicar | Imprimir Ficha | (campos sensíveis ocultos para CORRETOR)
+
+### `lib/utils.ts` — Funções
+| Função | Descrição |
+|--------|-----------|
+| `formatarMoeda(valor)` | BRL formatado: R$ 1.234.567,89 |
+| `formatarTelefone(valor)` | `(XX) XXXXX-XXXX` ou `(XX) XXXX-XXXX` |
+| `parsearOutros(valor)` | String: JSON array → `join(', ')`, fallback literal |
+| `parsearOutrosArray(valor)` | `string[]`: JSON array → array filtrado, fallback `[valor]` |
+
+## Dashboard MASTER Unificado (Hub Unificado Sessão 5) ✅
+
+### Estrutura
+- URL: `/consolidado` — acesso exclusivo MASTER
+- Componente: `DashboardMaster.tsx` com 4 abas via `?aba=` na URL
+- Sidebar: "Dashboard" (substituiu o acesso direto a Usuários para MASTER)
+
+### Abas
+| Aba | Componente | Conteúdo |
+|-----|-----------|----------|
+| Métricas | `DashboardConsolidado.tsx` | 4 cards totais + tabela por unidade + gráficos barras CSS |
+| Usuários | `UserManagement.tsx` | Lista de usuários com filtros, convites, ativar/desativar |
+| Auditoria | `AbaAuditoria.tsx` | Timeline de logs com filtros (usuário, unidade, ação, período) |
+| Configurações | `AbaConfiguracoes.tsx` | Gestão de unidades (limite análises, status, proprietário) |
+
+### API `GET /api/logs`
+- Filtros: usuarioId, unidadeId, acao, recurso, dataInicio, dataFim, pagina
+- Retorna logs com dados do usuário (nome, email, perfil, unidade)
+
+### Marca d'água em exportações
+- PDFs de análises incluem `<div class="watermark">BIOCASA</div>` (fundo fixo, semitransparente)
+- Visível apenas na impressão (`@media print { .watermark { display: block } }`)
+
+## Integração Chatwoot (Hub Unificado Sessão 2) ✅
+
+### Solução final: iframe com SSO via Platform API
+- Portal: `portal.cf8.com.br` | Chatwoot: `atendimento.cf8.com.br` — mesmo domínio raiz `.cf8.com.br`
+- Cookies `SameSite=None; Secure` configurados no Chatwoot — iframe funciona (first-party context)
+- `ChatwootEmbed.tsx`: chama `/api/chatwoot/sso` → carrega URL SSO no iframe (100% da área)
+
+### Campos do schema Usuario relacionados ao Chatwoot
+- `chatwootUserId` (Int?) — ID numérico do usuário no Chatwoot; null = sem acesso
+- `chatwootAccountId` (Int?) — ID da conta (Account) do Chatwoot
+- `chatwootToken` (String?) — Token de autenticação do usuário no Chatwoot
+
+### Variáveis de ambiente necessárias
+```
+CHATWOOT_PLATFORM_TOKEN="<token de super-admin do Chatwoot>"
+```
+
+## LGPD e Conformidade (Hub Unificado Sessão 4) ✅
+
+### Documentos legais
+- Política de Privacidade e Termos de Uso publicados no portal (footer + tela de login)
+
+### Retenção de dados (Task 4.3)
+- Rotina automática de limpeza: análises 5 anos, uploads 2 anos, logs_acesso 1 ano, logs_erro 6 meses
+
+### Soft-delete de usuários (Task 4.4)
+- `DELETE /api/usuarios/[id]` → `ativo=false` + desassociação Chatwoot + log
+- Login com conta desativada → mensagem específica
+
+**Nota:** O campo `consentimentoEm`/`consentimentoIp` planejado (Task 4.2) não foi implementado no schema.
+
+## Segurança — Implementado ✅
+| Item | Status | Detalhes |
+|------|--------|---------|
+| UFW ativo na VPS2 | ✅ | deny default; 22/80/443/5433 liberados |
+| PostgreSQL SSL | ✅ | Certificado autoassinado; `ssl=on`; scram-sha-256 |
+| Backup automático | ✅ | `/opt/backups/biocasa`, cron 03h00, retenção 30 dias |
+| Rate limiting APIs | ✅ | 10 req/min login; 30 req/min analises/arquivos |
+| Logs de acesso | ✅ | Tabela `logs_acesso`; lib/logs.ts |
+| 2FA TOTP para MASTER | ✅ | otplib; QR code; período de carência 24h |
+| Alertas de segurança por email | ✅ | lib/alertas.ts + lib/email.ts (Resend) |
+| Marca d'água em PDFs | ✅ | ExportarPDF.tsx com div watermark BIOCASA |
+| Campos sensíveis ocultos (CORRETOR) | ✅ | Sessão 9 |
+| DATABASE_URL com SSL | ⚠ | Ação manual: adicionar `?sslmode=require` no painel Vercel |
 
 ## Variáveis de Ambiente
 
@@ -285,7 +643,9 @@ NEXTAUTH_SECRET="<openssl rand -base64 32>"
 GEMINI_API_KEY="<chave Google AI Studio>"
 BLOB_READ_WRITE_TOKEN="<token painel Vercel>"
 DOLAR_REAL_PADRAO="5.50"
-API_KEY_N8N="<chave aleatória forte>"   # ← NOVO — autenticação para integração n8n
+API_KEY_N8N="<chave aleatória forte>"            # Auth para integração n8n
+CHATWOOT_PLATFORM_TOKEN="<super-admin token>"    # SSO Chatwoot
+RESEND_CONFIG="<api_key>|<from@email.com>"       # Email convites e alertas (formato: key|from)
 ```
 
 ## Comandos Úteis
@@ -296,6 +656,7 @@ npm run dev
 npm run build
 npm run db:push
 npm run db:seed
+npm run db:studio
 
 # VPS2 — PostgreSQL
 ssh vps2 "docker service ls | grep postgres-biocasa"
@@ -305,63 +666,31 @@ ssh vps2 "docker exec \$(docker ps -q -f name=postgres-biocasa) pg_dump -U bioca
 
 # Diagnóstico
 curl https://portal.cf8.com.br/api/diagnostico?debug=biocasa2026
-
-# db:push local (precisa do .env.local)
-export \$(grep -v '^#' .env.local | xargs) && npx prisma db push
 ```
 
-## Módulo de Imóveis — Interface e Componentes
+## Sessão 9 — Relatórios de Imóveis, Filtros, Segurança Corretor (Maio 2026) ✅
 
-### Listagem `/imoveis` — Filtros e Cards
-- **Linha 1 de filtros:** Modalidade (w-36) | Tipo (w-44) | Dormitórios (w-36) | Faixa de Valor (w-52) | Cidade (w-36) | Bairro (w-36)
-- **Linha 2 de filtros:** Busca livre (flex-1) | Ordenar por (w-40) | Filtrar | Limpar
-- **Faixa de Valor** → traduz para `valor_min`/`valor_max`: Até R$ 300k | R$ 300k–R$ 500k | R$ 500k–R$ 700k | Acima R$ 700k
-- **Ordenar por** → envia `ordenar`: Mais Recente (padrão) | Maior Valor | Menor Valor
-- **Card:** badge (situação) no footer; valor em destaque; linha cond/IPTU; linha características (dorms/suítes/vagas/m²)
+### Relatórios `/imoveis/relatorios`
+- **Aba Gráficos:** donut SVG (sem lib externa) para status + barras CSS para bairros e captadores
+- **Aba Relatório:** filtros de seleção + impressão via `window.open()` com HTML+CSS isolado
+  - Agrupamento: Unidade → Captador → Modalidade (Maps aninhados)
+  - CSS: `@page A4 portrait`, colgroup com larguras fixas, `page-break-inside: avoid` apenas no captador
+  - API `/api/imoveis/relatorios` (gráficos) + `/api/imoveis/relatorios/impressao` (tabela)
 
-### Formulário `ImovelForm.tsx` — 5 Seções
-1. Identificação e Classificação — codigoRef, tipo, finalidade, modalidade, situacao, destaque, publicarSite, parceria
-2. Endereço — CEP → Logradouro → Nº → Complemento → Bairro → Cidade → Estado → Edifício (CEP com auto-fill via ViaCEP)
-3. Detalhes Técnicos — áreas, quartos, suítes, banheiros, garagem, facilidades, descrição
-4. Dados Comerciais — valor venda/locação/condomínio/IPTU (máscaras BRL), proprietário, telefone, comissão, links, observações
-5. Fotos — contador estático; botões no footer: "Baixar Fotos" (link ZIP) + "Gerenciar Fotos" (abre modal)
+### Filtros de listagem com sessionStorage
+- Filtros persistidos durante navegação interna ao módulo
+- Cleanup automático ao sair do módulo (sidebar → navegação externa)
+- Prioridade: URL params > sessionStorage > vazio
+- Filtros iniciam vazios por padrão (removidos defaults VENDA/APARTAMENTO)
 
-**Máscaras de entrada:**
-- Monetário (`CampoMonetario`): armazena dígitos puros; exibe formatado BRL no blur; raw no focus
-- Telefone: `(00) 00000-0000` (celular) ou `(00) 0000-0000` (fixo) — detectado pelo 3º dígito `=== '9'`
-- CEP: auto-fill via ViaCEP ao digitar 8 dígitos (preenche logradouro, bairro, cidade, estado)
-
-### `GaleriaFotos.tsx`
-- Dropzone (react-dropzone) para upload de novas fotos
-- HTML5 drag-and-drop nativo para reordenação
-- **Reordenação lazy:** arrastar atualiza estado local; banner amarelo "Salvar Ordem" aparece; botão faz PUT no imóvel
-- Definir foto principal: clique no botão de estrela (PUT imediato)
-- `readOnly` mode: apenas visualiza (usado na página de detalhes)
-- Callback `onFotosChange?: (fotos) => void` notifica o pai sobre mudanças
-
-### `GerenciarFotosModal.tsx`
-- Botão "Gerenciar Fotos" abre modal fullscreen (z-50)
-- Fecha com ESC, clique no overlay ou botão X
-- Bloqueia scroll do body enquanto aberto
-- Header mostra contador de fotos atualizado via `onFotosChange`
-- Conteúdo: `<GaleriaFotos>` com overflow-y-auto
-
-### Página de Detalhes `/imoveis/[id]` — 4 Seções
-1. **Dados Comerciais:** código, nome, tipo, modalidade, valores (venda/locação), áreas, dorms, suítes, banheiros, garagem, permuta/financ
-2. **Dados do Imóvel:** endereço completo, situação, vista mar, condomínio/IPTU (valores mensais), facilidades, descrição
-3. **Dados Administrativos:** proprietário, captador, exclusividade, comissão, publicações, links, obs internas
-4. **Fotos:** `<GaleriaFotos readOnly>` — sempre por último
-
-### ViaCEP — Auto-fill de CEP
-- Disparado quando o campo CEP atinge 8 dígitos (sem máscara)
-- Endpoint: `https://viacep.com.br/ws/{cep}/json/`
-- Preenche: logradouro, bairro, cidade, estado
-- Campos ficam editáveis para correção manual
+### Segurança comercial — Perfil CORRETOR
+- CORRETOR tem acesso somente leitura ao módulo de imóveis
+- Campos sensíveis ocultos na listagem e no detalhe: proprietário, telefone, IPTU, matrícula, obs internas, comissão
 
 ## Convenções de Código
 - Arquivos: PascalCase componentes, camelCase libs
 - Variáveis/funções: camelCase em português
-- Erros API: sempre logar em logs_erro, retornar { erro: 'mensagem amigável' }
+- Erros API: sempre logar em logs_erro, retornar `{ erro: 'mensagem amigável' }`
 - Autenticação: sempre verificar session + perfil nas API routes
 - Campos JSON (fotos, facilidades): armazenados como String serializado; parse na camada da aplicação
 
@@ -371,147 +700,25 @@ export \$(grep -v '^#' .env.local | xargs) && npx prisma db push
 - escuro-500 = cards e painéis
 - escuro-700 = sidebar e header
 
-## Segurança — Sessão 1 (implementada)
-| Item | Status | Detalhes |
-|------|--------|---------|
-| UFW ativo na VPS2 | ✅ | deny default; 22/80/443/5433 liberados |
-| PostgreSQL SSL | ✅ | Certificado autoassinado; `ssl=on`; scram-sha-256 |
-| Porta 3306 MariaDB | ✅ | Nunca estava exposta no host |
-| Backup automático | ✅ | `/opt/backups/biocasa`, cron 03h00, retenção 30 dias |
-| Rate limiting APIs | ✅ | 10 req/min login; 30 req/min analises/arquivos |
-| Logs de acesso | ✅ | Tabela `logs_acesso`; lib/logs.ts; 6 ações registradas |
-| 2FA TOTP para MASTER | ✅ | otplib; QR code; período de carência 24h; login em 2 etapas |
-| DATABASE_URL com SSL | ⚠ | **Ação manual necessária**: adicionar `?sslmode=require` no painel Vercel |
-
-## Dashboard Consolidado (Hub Unificado Sessão 3) ✅
-
-### Rota e acesso
-- URL: `/consolidado` — acesso exclusivo MASTER
-- Arquivo: `app/(dashboard)/consolidado/page.tsx` + `components/DashboardConsolidado.tsx`
-- Sidebar: item "Dashboard" entre Atendimento e Usuários (visível só para MASTER)
-
-### API `GET /api/dashboard-consolidado`
-- Query params: `unidadeId?` (filtro por unidade) | `meses?` (1–24, padrão 6)
-- Retorna: `{ metricas[], evolucaoMensal[] }`
-- `metricas`: uma entrada por unidade com `analisesMes`, `limiteAnalises`, `analisesNoPeriodo`, `custoNoPeriodo`, `imoveisCadastrados`, `usuariosAtivos`
-- `evolucaoMensal`: array com `{ mes, label, analises, custo }` para cada mês do período
-
-### Interface
-- 4 cards de totais (análises, custo IA, imóveis, usuários)
-- Tabela por unidade — destaca em vermelho quando `analisesMes >= limiteAnalises`
-- 2 gráficos de barras CSS (sem dependência externa): análises por mês + custo por mês
-- Filtros: seletor de unidade (aparece quando há mais de 1) + botões de período
-
-## LGPD e Conformidade (Hub Unificado Sessão 4) ✅
-
-### Documentos legais
-- Política de Privacidade e Termos de Uso publicados no portal
-- Link no footer e na tela de login
-
-### Consentimento (Task 4.2)
-- Checkbox obrigatório no primeiro login: "Li e aceito a Política de Privacidade"
-- Campos `consentimentoEm` e `consentimentoIp` na tabela usuarios
-
-### Retenção de dados (Task 4.3)
-- Rotina automática de limpeza (cron): análises 5a, uploads 2a, logs_acesso 1a, logs_erro 6m
-
-### Soft-delete de usuários (Task 4.4)
-- **Regras:** MASTER desativa qualquer usuário exceto outro MASTER
-- **Backend:** `DELETE /api/usuarios/[id]` → `ativo=false` + desassociação Chatwoot + log
-- **Chatwoot:** `desassociarUsuarioChatwoot()` em `lib/chatwoot.ts` → `DELETE /platform/api/v1/accounts/{accountId}/account_users`
-- **Login:** preflight retorna `desativado:true` → mensagem específica na tela de login
-- **UI:** lista de usuários exibe só ativos; botão "Ver desativados" (MASTER)
-- **Auditoria:** ação `usuario_desativado` em `logs_acesso`
-
-## Integração Chatwoot (Hub Unificado Sessão 2) ✅
-
-### Solução final: iframe com SSO via Platform API
-- Portal em `portal.cf8.com.br` e Chatwoot em `atendimento.cf8.com.br` compartilham a raiz `.cf8.com.br`
-- Cookies `SameSite=None; Secure` configurados no Chatwoot via Docker — iframe funciona sem bloqueio
-- `ChatwootEmbed.tsx`: ao montar, chama `/api/chatwoot/sso` → carrega URL no iframe (100% da área)
-- `app/api/chatwoot/sso/route.ts`: gera URL SSO one-time via Platform API e retorna JSON
-- `app/api/chatwoot/redirect/route.ts`: alternativa redirect (mantido para uso futuro)
-
-### Fluxo SSO (iframe)
-1. Componente monta → `GET /api/chatwoot/sso`
-2. Servidor: verifica sessão → busca `chatwootUserId` no banco → chama `GET /platform/api/v1/users/{id}/login`
-3. Resposta: `{ url: "https://atendimento.cf8.com.br/app/login?sso_auth_token=..." }`
-4. iframe carrega a URL — usuário já autenticado no Chatwoot dentro do portal
-
-### Por que o iframe funciona no domínio portal.cf8.com.br
-- Bloqueio de cookies de terceiros (SameSite) só ocorre entre domínios raiz diferentes
-- `portal.cf8.com.br` → `atendimento.cf8.com.br`: mesmo domínio raiz `.cf8.com.br` = first-party context
-- `portal-biocasa.vercel.app` → `atendimento.cf8.com.br`: domínios raiz diferentes = third-party (bloqueado)
-
-### Variável de ambiente necessária
-```
-CHATWOOT_PLATFORM_TOKEN="<token de super-admin do Chatwoot>"
-```
-
-### Campos da tabela usuarios
-- `chatwootUserId` (String?) — ID numérico do usuário no Chatwoot; null = sem acesso ao módulo
-
-### Erros tratados
-- Sessão inválida → redirect para `/login`
-- `CHATWOOT_PLATFORM_TOKEN` ausente → 503
-- `chatwootUserId` não configurado → 404 com mensagem amigável
-- Platform API falhou → 502
-
-## Sessão 8 — Ficha, Visualização, Busca (Maio 2026) ✅
-
-### Ficha de Captação (`FichaCaptacao.tsx`)
-- Espaçamento ajustado para caber em meia folha A4 (148mm): `lineHeight 1.58`, padding `2mm`, `mb=4` em Row/CbRow, `padding 3px` e `marginBottom 3` nas seções
-- Adicionado checkbox **Portaria 24Hrs** nas facilidades do condomínio
-
-### Paginação da Listagem de Imóveis
-- Adicionados botões **Primeira** e **Última** à paginação: `« Primeira | ← Anterior | Página X de X | Próxima → | Última »`
-- Botões desabilitados nas extremidades (`disabled:opacity-40 disabled:cursor-not-allowed`)
-
-### Visualização do Imóvel (`/imoveis/[id]`)
-- **Layout em grid** reorganizado por seções (substituiu layout linear):
-  - Card de identificação: Código + Nome + Badge Situação / Unidade + Captador
-  - Seção 1 — Dados Comerciais: grid 3 colunas com sub-grids para endereço e linha de 4 colunas (Cond/IPTU/Áreas)
-  - Seção 2 — Dados do Imóvel: grid 4 colunas + chips de facilidades (ativos = dourado, inativos = apagados) + descrição
-  - Seção 3 — Dados do Condomínio: grid 3 colunas + chips de facilidades
-  - Seção 4 — Dados Administrativos
-- **Endereço concatenado**: `Logradouro, Número - Complemento, Bairro, Cidade/Estado - CEP XXXXX-XXX` (campos opcionais omitidos sem separadores duplos)
-- **Parceria Imobiliária**: badge verde (`bg-green-600`) com `✓` no card de identificação; removido dos Dados Comerciais
-- **Badge Situação**: removido do cabeçalho de botões (mantido apenas no card de identificação)
-- **Compartilhar**: usa `linkExterno` em vez de `slug`; desabilitado com tooltip quando `linkExterno` não cadastrado
-- **Campos "Outros" de facilidades**: `parsearOutrosArray()` — cada item renderizado como chip individual
-- **Botão "Copiar Ficha"**: removido (substituído pela Ficha do Imóvel)
-- **Portaria 24Hrs**: adicionada como chip nas facilidades do condomínio
-
-### Formulário de Imóvel (`ImovelForm.tsx`)
-- **Portaria 24Hrs** adicionada ao array `FACILIDADES_COND`
-- **Botões do rodapé** reorganizados: `[Excluir] [Cancelar]` esquerda · `[Salvar] [Voltar]` direita
-
-### `lib/utils.ts` — Funções adicionadas
-| Função | Descrição |
-|--------|-----------|
-| `formatarTelefone(valor)` | Máscara `(XX) XXXXX-XXXX` ou `(XX) XXXX-XXXX` |
-| `parsearOutros(valor)` | Retorna string: array JSON → `join(', ')`, fallback literal |
-| `parsearOutrosArray(valor)` | Retorna `string[]`: array JSON → array filtrado, fallback array de 1 item |
-
-### API `GET /api/imoveis` — Busca Texto Livre
-- Expandida de 4 para 14 campos (ver subseção "Busca por Texto Livre" acima)
-
 ## Pendências / TODOs
-| # | Item | Prioridade |
-|---|------|-----------|
-| 1 | Busca semântica real com text-embedding-004 | Alta |
-| 2 | Análise Profunda com Google Search (400 bad request) | Alta |
-| 3 | Adicionar `?sslmode=require` ao DATABASE_URL no painel Vercel | Alta |
-| 4 | Adicionar API_KEY_N8N no painel Vercel (env de produção) | Alta |
-| 5 | Script de importação Kenlo (~125 imóveis) via API /api/imoveis | Alta |
-| 6 | Site público de imóveis (portal de busca para clientes) | Média |
-| 7 | Automações n8n WhatsApp (notificações de novos imóveis) | Média |
-| 8 | Integrações de portais (ZAP, Viva Real, OLX) via n8n | Média |
-| 9 | Reset mensal analises_mes (cron job) | Média |
-| 10 | Logo real da Biocasa | Média |
-| 11 | Responsivo mobile completo | Média |
-| 12 | Paginação no histórico da Sidebar | Baixa |
-| 13 | Notificação email quando limite atingido | Baixa |
+| # | Item | Prioridade | Status |
+|---|------|-----------|--------|
+| 1 | Busca semântica real com text-embedding-004 | Alta | ⏳ |
+| 2 | Análise Profunda com Google Search (400 bad request) | Alta | ⏳ |
+| 3 | Adicionar `?sslmode=require` ao DATABASE_URL no painel Vercel | Alta | ⏳ |
+| 4 | Adicionar API_KEY_N8N no painel Vercel | Alta | ⏳ |
+| 5 | Script de importação Kenlo (~125 imóveis) via API /api/imoveis | Alta | ⏳ |
+| 6 | Site público de imóveis (portal de busca para clientes) | Média | ✅ |
+| 7 | Automações n8n WhatsApp (notificações de novos imóveis) | Média | ⏳ |
+| 8 | Integrações de portais (ZAP, Viva Real, OLX) via n8n | Média | ⏳ |
+| 9 | ERPNext no Portal (Hub Sessão 7) | Média | ⏳ |
+| 10 | Reset mensal analises_mes (cron job) | Média | ⏳ |
+| 11 | Logo real da Biocasa | Média | ⏳ |
+| 12 | Responsivo mobile completo | Média | ⏳ |
+| 13 | Onboarding automatizado de novas unidades (Hub Sessão 8) | Média | ⏳ |
+| 14 | Paginação no histórico da Sidebar | Baixa | ⏳ |
+| 15 | Notificação email quando limite de análises atingido | Baixa | ⏳ |
+| 16 | consentimentoEm/consentimentoIp na tabela usuarios (LGPD Task 4.2) | Baixa | ⏳ |
 
 ## Usuário inicial (seed)
 | Email | Senha | Perfil |
