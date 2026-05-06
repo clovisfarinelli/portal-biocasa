@@ -4,11 +4,10 @@ import { redirect, notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import GaleriaFotos from '@/components/imoveis/GaleriaFotos'
-import CopiarFichaButton from '@/components/imoveis/CopiarFichaButton'
 import CopiarTextoButton from '@/components/imoveis/CopiarTextoButton'
 import CompartilharButton from '@/components/imoveis/CompartilharButton'
 import DuplicarButton from '@/components/imoveis/DuplicarButton'
-import { formatarMoeda } from '@/lib/utils'
+import { formatarMoeda, parsearOutros } from '@/lib/utils'
 
 const LABEL_TIPO: Record<string, string> = {
   CASA: 'Casa', APARTAMENTO: 'Apartamento', TERRENO: 'Terreno', CHACARA: 'Chácara',
@@ -217,7 +216,6 @@ export default async function VisualizarImovelPage({
               Baixar Fotos
             </a>
           )}
-          <CopiarFichaButton texto={fichaWhatsApp} />
           {imovel.slug && <CompartilharButton slug={imovel.slug} />}
           {podeEditar && <DuplicarButton imovelId={imovel.id} codigoRef={imovel.codigoRef} />}
           {podeEditar && (
@@ -341,7 +339,7 @@ export default async function VisualizarImovelPage({
               <Chip key={f.id} label={f.label} ativo={facilImovel.includes(f.id)} />
             ))}
             {imovel.facilidadesImovelOutros && (
-              <Chip label={imovel.facilidadesImovelOutros} ativo />
+              <Chip label={parsearOutros(imovel.facilidadesImovelOutros)} ativo />
             )}
           </div>
         </div>
@@ -377,7 +375,7 @@ export default async function VisualizarImovelPage({
               <Chip key={f.id} label={f.label} ativo={facilCond.includes(f.id)} />
             ))}
             {imovel.facilidadesCondOutros && (
-              <Chip label={imovel.facilidadesCondOutros} ativo />
+              <Chip label={parsearOutros(imovel.facilidadesCondOutros)} ativo />
             )}
           </div>
         </div>
