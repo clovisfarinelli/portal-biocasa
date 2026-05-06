@@ -127,6 +127,7 @@ export default async function VisualizarImovelPage({
   }
 
   const podeEditar = ['MASTER', 'PROPRIETARIO', 'ASSISTENTE'].includes(perfil)
+  const eCorretor = perfil === 'CORRETOR'
   const voltarUrl = (searchParams.voltar && searchParams.voltar.startsWith('/imoveis'))
     ? searchParams.voltar
     : '/imoveis'
@@ -179,12 +180,13 @@ export default async function VisualizarImovelPage({
 
   const enderecoConcat = (() => {
     let base = imovel.logradouro ?? ''
-    if (imovel.numero && imovel.complemento) {
-      base += `, ${imovel.numero} - ${imovel.complemento}`
+    const complemento = eCorretor ? null : imovel.complemento
+    if (imovel.numero && complemento) {
+      base += `, ${imovel.numero} - ${complemento}`
     } else if (imovel.numero) {
       base += `, ${imovel.numero}`
-    } else if (imovel.complemento) {
-      base += ` - ${imovel.complemento}`
+    } else if (complemento) {
+      base += ` - ${complemento}`
     }
     const partes = [base]
     if (imovel.bairro) partes.push(imovel.bairro)
@@ -264,7 +266,7 @@ export default async function VisualizarImovelPage({
           </div>
           <div className="flex gap-8 items-end">
             <Campo label="Unidade" valor={imovel.unidade?.nome} />
-            <Campo label="Captador" valor={imovel.captador} />
+            {!eCorretor && <Campo label="Captador" valor={imovel.captador} />}
             {imovel.parceria && (
               <span className="px-2.5 py-1 rounded text-xs font-medium bg-green-600 text-white">
                 ✓ Parceria Imobiliária
@@ -295,9 +297,17 @@ export default async function VisualizarImovelPage({
           </div>
 
           {/* Proprietário | Contato | Edifício */}
-          <Campo label="Proprietário" valor={imovel.proprietario} />
-          <Campo label="Contato do Proprietário" valor={formatarTelefone(imovel.telProprietario)} />
-          <Campo label="Edifício/Condomínio" valor={imovel.edificio} />
+          {eCorretor ? (
+            <div className="col-span-3">
+              <Campo label="Edifício/Condomínio" valor={imovel.edificio} />
+            </div>
+          ) : (
+            <>
+              <Campo label="Proprietário" valor={imovel.proprietario} />
+              <Campo label="Contato do Proprietário" valor={formatarTelefone(imovel.telProprietario)} />
+              <Campo label="Edifício/Condomínio" valor={imovel.edificio} />
+            </>
+          )}
 
           <Campo label="Modalidade" valor={modalidadeLabel} />
           <div className="col-span-2"><Campo label="Valor Venda/Locação" valor={valorExibir} /></div>
@@ -370,7 +380,7 @@ export default async function VisualizarImovelPage({
 
         <div className="grid grid-cols-3 gap-x-6 gap-y-5 mb-5">
           <Campo label="Acesso" valor={imovel.acesso ? (LABEL_ACESSO[imovel.acesso] ?? imovel.acesso) : null} />
-          <Campo label="Andar" valor={imovel.andar != null ? String(imovel.andar) : null} />
+          {!eCorretor && <Campo label="Andar" valor={imovel.andar != null ? String(imovel.andar) : null} />}
           <div />
         </div>
 
@@ -394,8 +404,8 @@ export default async function VisualizarImovelPage({
         </div>
       </div>
 
-      {/* ── Seção 4 — Dados Administrativos ── */}
-      <div className="card mb-4">
+      {/* ── Seção 4 — Dados Administrativos (oculto para CORRETOR) ── */}
+      {!eCorretor && <div className="card mb-4">
         <SecTitle title="Dados Administrativos" />
         <div className="grid grid-cols-3 gap-x-6 gap-y-5">
 
@@ -441,7 +451,7 @@ export default async function VisualizarImovelPage({
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* ── Fotos ── */}
       {fotos.length > 0 && (
