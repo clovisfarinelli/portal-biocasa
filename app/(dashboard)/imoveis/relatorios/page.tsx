@@ -30,6 +30,7 @@ interface ImovelImpressao {
   tipo: string
   captador: string | null
   unidadeId: string
+  unidade: { nome: string }
 }
 
 interface DadosImpressao {
@@ -98,10 +99,9 @@ function valorExibido(imovel: ImovelImpressao): string {
 }
 
 function enderecoCompleto(imovel: ImovelImpressao): string {
-  let end = imovel.logradouro
-  if (imovel.numero) end += `, ${imovel.numero}`
-  if (imovel.complemento) end += ` - ${imovel.complemento}`
-  return end
+  return [imovel.logradouro, imovel.numero, imovel.complemento]
+    .filter(Boolean)
+    .join(', ')
 }
 
 // ─── Gráficos ─────────────────────────────────────────────────────────────────
@@ -306,23 +306,30 @@ function AbaImpressao({ perfil }: { perfil: string }) {
       .finally(() => setCarregando(false))
   }
 
-  // Agrupa por captador → modalidade
+  // Agrupa por Unidade → Captador → Modalidade
   type GrupoModal = { modalidade: string; imoveis: ImovelImpressao[] }
   type GrupoCap   = { captador: string; modalidades: GrupoModal[] }
+  type GrupoUni   = { unidade: string; captadores: GrupoCap[] }
 
-  function agrupar(lista: ImovelImpressao[]): GrupoCap[] {
-    const mapCap = new Map<string, Map<string, ImovelImpressao[]>>()
+  function agrupar(lista: ImovelImpressao[]): GrupoUni[] {
+    const mapUni = new Map<string, Map<string, Map<string, ImovelImpressao[]>>>()
     for (const im of lista) {
+      const uni = im.unidade?.nome ?? '(sem unidade)'
       const cap = im.captador ?? '(sem captador)'
       const mod = im.modalidade
+      if (!mapUni.has(uni)) mapUni.set(uni, new Map())
+      const mapCap = mapUni.get(uni)!
       if (!mapCap.has(cap)) mapCap.set(cap, new Map())
       const mapMod = mapCap.get(cap)!
       if (!mapMod.has(mod)) mapMod.set(mod, [])
       mapMod.get(mod)!.push(im)
     }
-    return Array.from(mapCap.entries()).map(([cap, mapMod]) => ({
-      captador: cap,
-      modalidades: Array.from(mapMod.entries()).map(([mod, ims]) => ({ modalidade: mod, imoveis: ims })),
+    return Array.from(mapUni.entries()).map(([uni, mapCap]) => ({
+      unidade: uni,
+      captadores: Array.from(mapCap.entries()).map(([cap, mapMod]) => ({
+        captador: cap,
+        modalidades: Array.from(mapMod.entries()).map(([mod, ims]) => ({ modalidade: mod, imoveis: ims })),
+      })),
     }))
   }
 
@@ -346,14 +353,72 @@ function AbaImpressao({ perfil }: { perfil: string }) {
       {/* CSS de impressão */}
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          #area-impressao, #area-impressao * { visibility: visible; }
-          #area-impressao { position: absolute; top: 0; left: 0; width: 100%; }
-          .grupo-captador { break-inside: avoid; }
-          table { border-collapse: collapse; width: 100%; }
-          th, td { border: 1px solid #ccc; padding: 4px 8px; font-size: 11px; }
-          th { background-color: #f3f3f3; }
-          @page { margin: 1.5cm; }
+          body > * { display: none !important; }
+          #area-impressao { display: block !important; }
+
+          @page {
+            size: A4 portrait;
+            margin: 1.5cm;
+          }
+
+          .print-hidden { display: none !important; }
+
+          .grupo-unidade { break-inside: avoid; margin-bottom: 16px; }
+          .grupo-captador { break-inside: avoid; margin-bottom: 12px; }
+
+          table {
+            border-collapse: collapse;
+            width: 100%;
+            table-layout: fixed;
+          }
+
+          th {
+            background-color: #f3f3f3 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            font-size: 11px;
+            padding: 4px 6px;
+            border: 1px solid #ccc;
+            text-align: left;
+          }
+
+          td {
+            font-size: 10px;
+            padding: 3px 6px;
+            border: 1px solid #ddd;
+            vertical-align: top;
+          }
+
+          .unidade-header {
+            font-size: 13px;
+            font-weight: bold;
+            border-bottom: 2px solid #000;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+          }
+
+          .captador-header {
+            font-size: 11px;
+            font-weight: bold;
+            margin: 8px 0 4px 0;
+          }
+
+          .subtotal {
+            font-size: 10px;
+            text-align: right;
+            margin-top: 4px;
+            color: #555;
+          }
+
+          .total-geral {
+            font-size: 12px;
+            font-weight: bold;
+            text-align: right;
+            margin-top: 12px;
+            border-top: 1px solid #000;
+            padding-top: 6px;
+          }
         }
       `}</style>
 
@@ -444,60 +509,68 @@ function AbaImpressao({ perfil }: { perfil: string }) {
             <p className="text-xs text-gray-500 mb-4">Filtros: {filtrosTexto}</p>
           )}
 
-          {/* Grupos */}
+          {/* Grupos: Unidade → Captador → Modalidade */}
           {grupos.length === 0 ? (
             <p className="text-gray-500 text-sm py-8 text-center">Nenhum imóvel encontrado para os filtros selecionados.</p>
           ) : (
-            grupos.map(gc => (
-              gc.modalidades.map(gm => (
-                <div key={`${gc.captador}-${gm.modalidade}`} className="grupo-captador mb-6">
-                  <div className="flex items-center gap-6 mb-2">
-                    <p className="font-semibold text-sm">
-                      Captador: <span className="font-bold">{gc.captador}</span>
-                    </p>
-                    <p className="font-semibold text-sm">
-                      Modalidade: <span className="font-bold">{MODAL_LABELS[gm.modalidade] ?? gm.modalidade}</span>
-                    </p>
-                  </div>
-                  <hr className="border-gray-300 mb-2" />
-                  <table>
-                    <thead>
-                      <tr>
-                        <th className="text-left">Código</th>
-                        <th className="text-left">Dt. Cadastro</th>
-                        <th className="text-left">Endereço</th>
-                        <th className="text-left">Bairro</th>
-                        <th className="text-left">Cidade</th>
-                        <th className="text-right">Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {gm.imoveis.map(im => (
-                        <tr key={im.id}>
-                          <td>{im.codigoRef}</td>
-                          <td>{formatarData(im.dataCadastro)}</td>
-                          <td>{enderecoCompleto(im)}</td>
-                          <td>{im.bairro}</td>
-                          <td>{im.cidade}</td>
-                          <td className="text-right">{valorExibido(im)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p className="text-xs text-gray-500 text-right mt-1">
-                    Subtotal: {gm.imoveis.length} imóvel{gm.imoveis.length !== 1 ? 'is' : ''}
-                  </p>
-                </div>
-              ))
+            grupos.map(gu => (
+              <div key={gu.unidade} className="grupo-unidade mb-6">
+                <p className="unidade-header text-sm font-bold uppercase border-b-2 border-black pb-1 mb-3">
+                  UNIDADE: {gu.unidade}
+                </p>
+
+                {gu.captadores.map(gc =>
+                  gc.modalidades.map(gm => (
+                    <div key={`${gc.captador}-${gm.modalidade}`} className="grupo-captador mb-4">
+                      <p className="captador-header text-xs font-bold mb-1">
+                        Captador: {gc.captador} — Modalidade: {MODAL_LABELS[gm.modalidade] ?? gm.modalidade}
+                      </p>
+                      <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
+                        <colgroup>
+                          <col style={{ width: '8%' }} />
+                          <col style={{ width: '10%' }} />
+                          <col style={{ width: '42%' }} />
+                          <col style={{ width: '16%' }} />
+                          <col style={{ width: '14%' }} />
+                          <col style={{ width: '10%' }} />
+                        </colgroup>
+                        <thead>
+                          <tr>
+                            <th style={{ whiteSpace: 'nowrap' }}>Código</th>
+                            <th style={{ whiteSpace: 'nowrap' }}>Dt. Cadastro</th>
+                            <th>Endereço</th>
+                            <th style={{ whiteSpace: 'nowrap' }}>Bairro</th>
+                            <th style={{ whiteSpace: 'nowrap' }}>Cidade</th>
+                            <th style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {gm.imoveis.map(im => (
+                            <tr key={im.id}>
+                              <td style={{ whiteSpace: 'nowrap' }}>{im.codigoRef}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{formatarData(im.dataCadastro)}</td>
+                              <td style={{ wordBreak: 'break-word', whiteSpace: 'normal', fontSize: '10px' }}>{enderecoCompleto(im)}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{im.bairro}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{im.cidade}</td>
+                              <td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>{valorExibido(im)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <p className="subtotal text-xs text-gray-500 text-right mt-1">
+                        Subtotal: {gm.imoveis.length} imóvel{gm.imoveis.length !== 1 ? 'is' : ''}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
             ))
           )}
 
           {/* Rodapé */}
-          <div className="border-t border-gray-300 pt-3 mt-4">
-            <p className="text-sm font-bold text-right">
-              Total geral: {dados.total} imóvel{dados.total !== 1 ? 'is' : ''}
-            </p>
-          </div>
+          <p className="total-geral text-sm font-bold text-right border-t border-gray-400 pt-3 mt-4">
+            Total geral: {dados.total} imóvel{dados.total !== 1 ? 'is' : ''}
+          </p>
         </div>
       )}
     </>

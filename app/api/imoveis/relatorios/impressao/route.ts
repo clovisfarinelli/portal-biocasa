@@ -51,8 +51,10 @@ export async function GET(req: NextRequest) {
         tipo: true,
         captador: true,
         unidadeId: true,
+        unidade: { select: { nome: true } },
       },
       orderBy: [
+        { unidade: { nome: 'asc' } },
         { captador: 'asc' },
         { modalidade: 'asc' },
         { tipo: 'asc' },
