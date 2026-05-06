@@ -487,6 +487,7 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
           <Cb m={facilCond.includes('SALAO_FESTAS')} label="Salão Festas" />
           <Cb m={facilCond.includes('SALAO_JOGOS')} label="Salão Jogos" />
           <Cb m={facilCond.includes('PLAYGROUND')} label="Playground" />
+          <Cb m={facilCond.includes('PORTARIA_24HRS')} label="Portaria 24Hrs" />
           <span style={{ ...S.label, marginLeft: 6, marginRight: 3 }}>Outros:</span>
           <span style={S.campo}>{d.facilidadesCondOutros ?? ''}</span>
         </div>

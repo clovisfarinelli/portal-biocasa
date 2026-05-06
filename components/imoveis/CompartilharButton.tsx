@@ -2,23 +2,20 @@
 
 import { useState } from 'react'
 
-const BASE_URL = 'https://imoveis.cf8.com.br'
-
 interface Props {
-  slug: string
+  linkExterno?: string | null
 }
 
-export default function CompartilharButton({ slug }: Props) {
+export default function CompartilharButton({ linkExterno }: Props) {
   const [copiado, setCopiado] = useState(false)
 
   async function copiar() {
-    const url = `${BASE_URL}/imoveis/${slug}`
+    if (!linkExterno) return
     try {
-      await navigator.clipboard.writeText(url)
+      await navigator.clipboard.writeText(linkExterno)
     } catch {
-      // fallback para browsers sem clipboard API
       const el = document.createElement('textarea')
-      el.value = url
+      el.value = linkExterno
       el.style.position = 'fixed'
       el.style.opacity = '0'
       document.body.appendChild(el)
@@ -30,12 +27,15 @@ export default function CompartilharButton({ slug }: Props) {
     setTimeout(() => setCopiado(false), 2500)
   }
 
+  const desabilitado = !linkExterno
+
   return (
     <div className="relative">
       <button
         onClick={copiar}
-        className="btn-secondary flex items-center gap-2 text-sm"
-        title={`Copiar link: ${BASE_URL}/imoveis/${slug}`}
+        disabled={desabilitado}
+        title={desabilitado ? 'Link externo não cadastrado' : `Copiar link: ${linkExterno}`}
+        className={`btn-secondary flex items-center gap-2 text-sm ${desabilitado ? 'opacity-40 cursor-not-allowed' : ''}`}
       >
         {copiado ? (
           <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -49,7 +49,6 @@ export default function CompartilharButton({ slug }: Props) {
         {copiado ? 'Link copiado!' : 'Compartilhar'}
       </button>
 
-      {/* Toast */}
       {copiado && (
         <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 whitespace-nowrap bg-escuro-700 border border-escuro-500 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg z-20 pointer-events-none">
           ✓ Link copiado para a área de transferência

@@ -54,6 +54,7 @@ const FACILIDADES_COND = [
   { id: 'SALAO_FESTAS', label: 'Salão de Festas' },
   { id: 'SALAO_JOGOS', label: 'Salão de Jogos' },
   { id: 'PLAYGROUND', label: 'Playground' },
+  { id: 'PORTARIA_24HRS', label: 'Portaria 24Hrs' },
   { id: 'OUTROS', label: 'Outros' },
 ]
 
@@ -1307,9 +1308,9 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
         </div>
       )}
 
-      {/* ─── Rodapé: Excluir (esquerda) | Cancelar + Salvar (direita) ───────── */}
+      {/* ─── Rodapé: Excluir+Cancelar (esquerda) | Salvar+Voltar (direita) ────── */}
       <div className="flex items-center justify-between gap-4">
-        <div>
+        <div className="flex gap-3">
           {['MASTER', 'PROPRIETARIO', 'ESPECIALISTA', 'ASSISTENTE'].includes(perfil) && modoEdicao && (
             <button
               onClick={excluir}
@@ -1322,8 +1323,6 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
               {excluindo ? 'Excluindo...' : 'Excluir Imóvel'}
             </button>
           )}
-        </div>
-        <div className="flex gap-3">
           <button
             onClick={() => router.push(voltarUrl ?? '/imoveis')}
             disabled={gerandoDescricao || salvando}
@@ -1331,6 +1330,8 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
           >
             Cancelar
           </button>
+        </div>
+        <div className="flex gap-3">
           <button
             onClick={salvar}
             disabled={salvando || gerandoDescricao}
@@ -1361,23 +1362,19 @@ export default function ImovelForm({ imovelId, imovelInicial, perfil, voltarUrl 
               </>
             )}
           </button>
+          {modoEdicao && (
+            <button
+              onClick={() => router.back()}
+              className="btn-secondary flex items-center gap-2 text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Voltar
+            </button>
+          )}
         </div>
       </div>
-
-      {/* ← Voltar — abaixo do rodapé, dentro do enquadramento da página */}
-      {modoEdicao && (
-        <div className="mt-3">
-          <button
-            onClick={() => router.back()}
-            className="btn-secondary flex items-center gap-2 text-sm"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Voltar
-          </button>
-        </div>
-      )}
 
       {modalConfirmarIA && (
         <ModalConfirmarDescricaoIA

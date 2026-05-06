@@ -190,7 +190,9 @@ export default async function VisualizarImovelPage({
     if (imovel.bairro) partes.push(imovel.bairro)
     if (imovel.cidade && imovel.estado) partes.push(`${imovel.cidade}/${imovel.estado}`)
     else if (imovel.cidade) partes.push(imovel.cidade)
-    return partes.filter(Boolean).join(', ')
+    const resultado = partes.filter(Boolean).join(', ')
+    const cepFmt = imovel.cep ? imovel.cep.replace(/\D/g, '').replace(/^(\d{5})(\d{3})$/, '$1-$2') : null
+    return cepFmt ? `${resultado} - CEP ${cepFmt}` : resultado
   })()
 
   return (
@@ -231,7 +233,7 @@ export default async function VisualizarImovelPage({
               Baixar Fotos
             </a>
           )}
-          {imovel.slug && <CompartilharButton slug={imovel.slug} />}
+          <CompartilharButton linkExterno={imovel.linkExterno} />
           {podeEditar && <DuplicarButton imovelId={imovel.id} codigoRef={imovel.codigoRef} />}
           {podeEditar && (
             <Link href={`/imprimir/imoveis/${imovel.id}/ficha`} target="_blank" className="btn-secondary flex items-center gap-2 text-sm">
@@ -290,9 +292,6 @@ export default async function VisualizarImovelPage({
           <div className="col-span-3">
             <p className="text-[11px] text-white/50 mb-0.5 uppercase tracking-wide">Endereço</p>
             <p className="text-white text-sm">{enderecoConcat || '—'}</p>
-            {imovel.cep && (
-              <p className="text-xs text-white/40 mt-0.5">CEP: {imovel.cep}</p>
-            )}
           </div>
 
           {/* Proprietário | Contato | Edifício */}
@@ -384,6 +383,7 @@ export default async function VisualizarImovelPage({
               { id: 'SALAO_FESTAS', label: 'Salão de Festas' },
               { id: 'SALAO_JOGOS', label: 'Salão de Jogos' },
               { id: 'PLAYGROUND', label: 'Playground' },
+              { id: 'PORTARIA_24HRS', label: 'Portaria 24Hrs' },
             ].map(f => (
               <Chip key={f.id} label={f.label} ativo={facilCond.includes(f.id)} />
             ))}
