@@ -33,15 +33,54 @@ const LABEL_GARAGEM: Record<string, string> = {
   FECHADA: 'Fechada', DEMARCADA: 'Demarcada',
   COLETIVA_SUF: 'Coletiva Suf.', COLETIVA_INSUF: 'Coletiva Insuf.',
 }
+const LABEL_SITUACAO_IMOVEL: Record<string, string> = {
+  MOBILIADO: 'Mobiliado', SEMI_MOBILIADO: 'Semi-Mobiliado', SEM_MOBILIA: 'Sem Mobília',
+  EM_REFORMA: 'Em Reforma', NA_PLANTA: 'Na Planta',
+}
+const LABEL_ACESSO: Record<string, string> = {
+  ELEVADOR: 'Elevador', ESCADAS: 'Escadas', RAMPA: 'Rampa', TERREO: 'Térreo',
+}
 
-function Linha({ label, valor }: { label: string; valor?: string | null | number | boolean }) {
-  if (valor === undefined || valor === null || valor === '' || valor === false) return null
-  const v = typeof valor === 'boolean' ? 'Sim' : String(valor)
+// ─── Helpers de apresentação ─────────────────────────────────────────────────
+
+function Campo({ label, valor }: { label: string; valor?: string | null }) {
   return (
-    <div className="flex gap-2 py-1.5 border-b border-escuro-600 last:border-0">
-      <span className="text-escuro-300 text-sm min-w-36 shrink-0">{label}</span>
-      <span className="text-white text-sm break-words">{v}</span>
+    <div>
+      <p className="text-[11px] text-white/50 mb-0.5 uppercase tracking-wide">{label}</p>
+      <p className="text-white text-sm">{valor || '—'}</p>
     </div>
+  )
+}
+
+function BadgeBool({ value, label }: { value: boolean | null | undefined; label: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border ${
+      value
+        ? 'bg-green-900/40 text-green-300 border-green-700/50'
+        : 'bg-escuro-600 text-white/30 border-escuro-500'
+    }`}>
+      {value ? '✓' : '—'}&nbsp;{label}
+    </span>
+  )
+}
+
+function Chip({ label, ativo }: { label: string; ativo: boolean }) {
+  return (
+    <span className={`px-2.5 py-1 rounded-full text-xs border ${
+      ativo
+        ? 'bg-dourado-400/20 text-dourado-400 border-dourado-400/40'
+        : 'bg-escuro-600/50 text-white/20 border-escuro-500/50'
+    }`}>
+      {label}
+    </span>
+  )
+}
+
+function SecTitle({ n, title }: { n?: number; title: string }) {
+  return (
+    <h3 className="text-xs font-bold text-dourado-400 uppercase tracking-wider border-b border-escuro-400 pb-2 mb-4">
+      {n ? `${n}. ` : ''}{title}
+    </h3>
   )
 }
 
@@ -58,6 +97,8 @@ function BadgeSituacao({ situacao }: { situacao: string }) {
     </span>
   )
 }
+
+// ─── Página ──────────────────────────────────────────────────────────────────
 
 export default async function VisualizarImovelPage({
   params,
@@ -106,25 +147,14 @@ export default async function VisualizarImovelPage({
     ? (() => { try { return JSON.parse(imovel.facilidadesCond) } catch { return [] } })()
     : []
 
-  const labelFacilImovel: Record<string, string> = {
-    ARMARIOS_QUARTOS: 'Armários Quartos', COZ_PLANEJADA: 'Coz. Planejada',
-    VENTILADOR_TETO: 'Ventilador Teto', AR_CONDICIONADO: 'Ar Condicionado',
-    VARANDA_GOURMET: 'Varanda Gourmet', CHURRASQUEIRA: 'Churrasqueira',
-    OUTROS: imovel.facilidadesImovelOutros ?? 'Outros',
-  }
-  const labelFacilCond: Record<string, string> = {
-    PISCINA: 'Piscina', ACADEMIA: 'Academia', SALAO_FESTAS: 'Salão de Festas',
-    SALAO_JOGOS: 'Salão de Jogos', PLAYGROUND: 'Playground',
-    OUTROS: imovel.facilidadesCondOutros ?? 'Outros',
-  }
-
-  // Texto para WhatsApp
   const tipoLabel = `${LABEL_TIPO[imovel.tipo] ?? imovel.tipo}${imovel.subtipo ? ` ${LABEL_SUBTIPO[imovel.subtipo] ?? imovel.subtipo}` : ''}`
+
   const valorLabel = mostrarLocacao && imovel.valorLocacao
     ? `Locação: ${formatarMoeda(imovel.valorLocacao)}/mês`
     : mostrarVenda && imovel.valorVenda
       ? `Venda: ${formatarMoeda(imovel.valorVenda)}`
       : ''
+
   const fichaWhatsApp = [
     `🏠 ${tipoLabel} — ${imovel.bairro}, ${imovel.cidade}`,
     imovel.areaUtil ? `📐 ${imovel.areaUtil}m²${imovel.dormitorios ? ` | ${LABEL_DORMITORIOS[imovel.dormitorios] ?? imovel.dormitorios} dorms` : ''}${imovel.vagasGaragem && imovel.vagasGaragem !== 'SEM_VAGA' ? ` | ${LABEL_VAGAS[imovel.vagasGaragem] ?? imovel.vagasGaragem} vaga(s)` : ''}` : null,
@@ -133,9 +163,25 @@ export default async function VisualizarImovelPage({
     (imovel.linkExterno || imovel.slug) ? `🔗 ${imovel.linkExterno ?? `https://imoveis.cf8.com.br/imoveis/${imovel.slug}`}` : null,
   ].filter(Boolean).join('\n')
 
+  const valorExibir = (() => {
+    if (modalidade === 'AMBOS') {
+      const parts = []
+      if (imovel.valorVenda) parts.push(`V: ${formatarMoeda(imovel.valorVenda)}`)
+      if (imovel.valorLocacao) parts.push(`L: ${formatarMoeda(imovel.valorLocacao)}/mês`)
+      return parts.join(' / ') || null
+    }
+    if (mostrarVenda) return imovel.valorVenda ? formatarMoeda(imovel.valorVenda) : null
+    if (mostrarLocacao) return imovel.valorLocacao ? `${formatarMoeda(imovel.valorLocacao)}/mês` : null
+    return null
+  })()
+
+  const modalidadeLabel = modalidade === 'VENDA' ? 'Venda' : modalidade === 'LOCACAO' ? 'Locação' : 'Venda + Locação'
+  const vistaMarlabel = imovel.tipoVistaMar === 'FRENTE' ? 'Frente' : imovel.tipoVistaMar === 'LATERAL' ? 'Lateral' : null
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      {/* Header */}
+
+      {/* ── Header — botões de ação ── */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <Link href={voltarUrl} className="btn-secondary flex items-center gap-2 text-sm">
@@ -153,7 +199,7 @@ export default async function VisualizarImovelPage({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <BadgeSituacao situacao={imovel.situacao} />
           {podeEditar && (
             <Link href={`/imoveis/${imovel.id}/editar?voltar=${encodeURIComponent(voltarUrl)}`} className="btn-primary flex items-center gap-2 text-sm">
@@ -164,11 +210,7 @@ export default async function VisualizarImovelPage({
             </Link>
           )}
           {fotos.length > 0 && (
-            <a
-              href={`/api/imoveis/${imovel.id}/fotos/zip`}
-              download
-              className="btn-secondary flex items-center gap-2 text-sm"
-            >
+            <a href={`/api/imoveis/${imovel.id}/fotos/zip`} download className="btn-secondary flex items-center gap-2 text-sm">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
@@ -176,18 +218,10 @@ export default async function VisualizarImovelPage({
             </a>
           )}
           <CopiarFichaButton texto={fichaWhatsApp} />
-          {imovel.slug && (
-            <CompartilharButton slug={imovel.slug} />
-          )}
+          {imovel.slug && <CompartilharButton slug={imovel.slug} />}
+          {podeEditar && <DuplicarButton imovelId={imovel.id} codigoRef={imovel.codigoRef} />}
           {podeEditar && (
-            <DuplicarButton imovelId={imovel.id} codigoRef={imovel.codigoRef} />
-          )}
-          {podeEditar && (
-            <Link
-              href={`/imprimir/imoveis/${imovel.id}/ficha`}
-              target="_blank"
-              className="btn-secondary flex items-center gap-2 text-sm"
-            >
+            <Link href={`/imprimir/imoveis/${imovel.id}/ficha`} target="_blank" className="btn-secondary flex items-center gap-2 text-sm">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
@@ -197,98 +231,211 @@ export default async function VisualizarImovelPage({
         </div>
       </div>
 
-      {/* Seção 1 — Dados Comerciais */}
+      {/* ── Card Identificação ── */}
       <div className="card mb-4">
-        <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Dados Comerciais</h3>
-        <Linha label="Código Ref." valor={imovel.codigoRef} />
-        <Linha label="Nome" valor={imovel.nome} />
-        <Linha label="Finalidade" valor={imovel.finalidade === 'RESIDENCIAL' ? 'Residencial' : 'Comercial'} />
-        <Linha label="Tipo" valor={`${LABEL_TIPO[imovel.tipo] ?? imovel.tipo}${imovel.subtipo ? ` · ${LABEL_SUBTIPO[imovel.subtipo] ?? imovel.subtipo}` : ''}`} />
-        <Linha label="Modalidade" valor={imovel.modalidade === 'VENDA' ? 'Venda' : imovel.modalidade === 'LOCACAO' ? 'Locação' : 'Venda + Locação'} />
-        {mostrarVenda && <Linha label="Valor Venda" valor={imovel.valorVenda ? formatarMoeda(imovel.valorVenda) : null} />}
-        {mostrarLocacao && <Linha label="Valor Locação" valor={imovel.valorLocacao ? `${formatarMoeda(imovel.valorLocacao)}/mês` : null} />}
-        <Linha label="Área Útil" valor={imovel.areaUtil ? `${imovel.areaUtil} m²` : null} />
-        <Linha label="Área Total" valor={imovel.areaTotal ? `${imovel.areaTotal} m²` : null} />
-        <Linha label="Dormitórios" valor={imovel.dormitorios ? (LABEL_DORMITORIOS[imovel.dormitorios] ?? imovel.dormitorios) : null} />
-        <Linha label="Suítes" valor={imovel.suites ? (LABEL_SUITES[imovel.suites] ?? imovel.suites) : null} />
-        <Linha label="Banheiros" valor={imovel.totalBanheiros} />
-        <Linha label="Garagem" valor={imovel.vagasGaragem ? `${LABEL_VAGAS[imovel.vagasGaragem] ?? imovel.vagasGaragem} vaga(s)${imovel.tipoGaragem ? ` · ${LABEL_GARAGEM[imovel.tipoGaragem] ?? imovel.tipoGaragem}` : ''}` : null} />
-        <Linha label="Aceita Permuta" valor={imovel.aceitaPermuta || undefined} />
-        <Linha label="Aceita Financiamento" valor={imovel.aceitaFinanc || undefined} />
-        <Linha label="Documentação OK" valor={imovel.documentacaoOk || undefined} />
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-6 flex-wrap">
+            <div>
+              <p className="text-[11px] text-white/50 mb-0.5 uppercase tracking-wide">Código Ref.</p>
+              <p className="text-dourado-400 font-bold text-lg leading-tight">{imovel.codigoRef}</p>
+            </div>
+            {imovel.nome && (
+              <div>
+                <p className="text-[11px] text-white/50 mb-0.5 uppercase tracking-wide">Nome</p>
+                <p className="text-white text-base font-medium">{imovel.nome}</p>
+              </div>
+            )}
+            <BadgeSituacao situacao={imovel.situacao} />
+          </div>
+          <div className="flex gap-8">
+            <Campo label="Unidade" valor={imovel.unidade?.nome} />
+            <Campo label="Captador" valor={imovel.captador} />
+          </div>
+        </div>
       </div>
 
-      {/* Seção 2 — Dados do Imóvel */}
+      {/* ── Seção 1 — Dados Comerciais ── */}
       <div className="card mb-4">
-        <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Dados do Imóvel</h3>
-        <Linha label="Logradouro" valor={[imovel.logradouro, imovel.numero, imovel.complemento].filter(Boolean).join(', ')} />
-        <Linha label="Bairro" valor={imovel.bairro} />
-        <Linha label="Cidade / Estado" valor={`${imovel.cidade} - ${imovel.estado}`} />
-        <Linha label="CEP" valor={imovel.cep} />
-        <Linha label="Edifício" valor={imovel.edificio} />
-        <Linha label="Andar" valor={imovel.andar} />
-        <Linha label="Acesso" valor={imovel.acesso === 'TERREO' ? 'Térreo' : imovel.acesso === 'ESCADAS' ? 'Escadas' : imovel.acesso === 'ELEVADOR' ? 'Elevador' : imovel.acesso} />
-        <Linha label="Situação Imóvel" valor={imovel.situacaoImovel} />
-        <Linha label="Dependência" valor={imovel.dependencia || undefined} />
-        <Linha label="Vista Mar" valor={imovel.vistaMar ? `Sim${imovel.tipoVistaMar ? ` · ${imovel.tipoVistaMar === 'FRENTE' ? 'Frente' : 'Lateral'}` : ''}` : null} />
-        <Linha label="Condomínio" valor={imovel.valorCondominio ? `${formatarMoeda(imovel.valorCondominio)}/mês` : null} />
-        <Linha label="IPTU Mensal" valor={imovel.valorIptu ? formatarMoeda(imovel.valorIptu) : null} />
-        {facilImovel.length > 0 && (
-          <Linha label="Facilidades" valor={facilImovel.map(f => labelFacilImovel[f] ?? f).join(', ')} />
-        )}
-        {facilCond.length > 0 && (
-          <Linha label="Facilidades Cond." valor={facilCond.map(f => labelFacilCond[f] ?? f).join(', ')} />
-        )}
+        <SecTitle n={1} title="Dados Comerciais" />
+        <div className="grid grid-cols-3 gap-x-6 gap-y-5">
+
+          <Campo label="Finalidade" valor={
+            imovel.finalidade === 'RESIDENCIAL' ? 'Residencial'
+            : imovel.finalidade === 'COMERCIAL' ? 'Comercial'
+            : imovel.finalidade === 'RURAL' ? 'Rural'
+            : imovel.finalidade
+          } />
+          <Campo label="Tipo" valor={LABEL_TIPO[imovel.tipo] ?? imovel.tipo} />
+          <Campo label="Subtipo" valor={imovel.subtipo ? (LABEL_SUBTIPO[imovel.subtipo] ?? imovel.subtipo) : null} />
+
+          <div className="col-span-2">
+            <Campo label="Logradouro" valor={imovel.logradouro} />
+          </div>
+          <Campo label="Número" valor={imovel.numero} />
+
+          <Campo label="Complemento" valor={imovel.complemento} />
+          <Campo label="Bairro" valor={imovel.bairro} />
+          <Campo label="CEP" valor={imovel.cep} />
+
+          <Campo label="Cidade" valor={imovel.cidade} />
+          <Campo label="Estado" valor={imovel.estado} />
+          <Campo label="Edifício/Condomínio" valor={imovel.edificio} />
+
+          <div className="col-span-2">
+            <Campo label="Proprietário" valor={imovel.proprietario} />
+          </div>
+          <Campo label="Contato do Proprietário" valor={imovel.telProprietario} />
+
+          <Campo label="Modalidade" valor={modalidadeLabel} />
+          <Campo label="Valor Venda/Locação" valor={valorExibir} />
+          <div className="flex items-end pb-0.5">
+            <BadgeBool value={imovel.parceria} label="Parceria Imobiliária" />
+          </div>
+
+          <div className="col-span-3 grid grid-cols-4 gap-6">
+            <Campo label="Condomínio R$" valor={imovel.valorCondominio ? formatarMoeda(imovel.valorCondominio) : null} />
+            <Campo label="IPTU R$" valor={imovel.valorIptu ? formatarMoeda(imovel.valorIptu) : null} />
+            <Campo label="Área Útil m²" valor={imovel.areaUtil ? String(imovel.areaUtil) : null} />
+            <Campo label="Área Total m²" valor={imovel.areaTotal ? String(imovel.areaTotal) : null} />
+          </div>
+
+          <div className="col-span-3 flex gap-3 flex-wrap">
+            <BadgeBool value={imovel.aceitaPermuta} label="Aceita Permuta" />
+            <BadgeBool value={imovel.documentacaoOk} label="Documentação OK" />
+            <BadgeBool value={imovel.aceitaFinanc} label="Aceita Financiamento" />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Seção 2 — Dados do Imóvel ── */}
+      <div className="card mb-4">
+        <SecTitle n={2} title="Dados do Imóvel" />
+
+        <div className="grid grid-cols-4 gap-x-6 gap-y-5 mb-5">
+          <Campo label="Dormitórios" valor={imovel.dormitorios ? (LABEL_DORMITORIOS[imovel.dormitorios] ?? imovel.dormitorios) : null} />
+          <Campo label="Suítes" valor={imovel.suites ? (LABEL_SUITES[imovel.suites] ?? imovel.suites) : null} />
+          <Campo label="Banheiros" valor={imovel.totalBanheiros} />
+          <Campo label="Situação do Imóvel" valor={imovel.situacaoImovel ? (LABEL_SITUACAO_IMOVEL[imovel.situacaoImovel] ?? imovel.situacaoImovel) : null} />
+
+          <Campo label="Vagas" valor={imovel.vagasGaragem ? (LABEL_VAGAS[imovel.vagasGaragem] ?? imovel.vagasGaragem) : null} />
+          <Campo label="Tipo de Garagem" valor={imovel.tipoGaragem ? (LABEL_GARAGEM[imovel.tipoGaragem] ?? imovel.tipoGaragem) : null} />
+          <div className="flex items-end pb-0.5">
+            <BadgeBool value={imovel.dependencia} label="Dependência" />
+          </div>
+          <div className="flex items-end pb-0.5">
+            <BadgeBool value={imovel.vistaMar} label={imovel.vistaMar && vistaMarlabel ? `Vista Mar · ${vistaMarlabel}` : 'Vista Mar'} />
+          </div>
+        </div>
+
+        <div className="mb-5">
+          <p className="text-[11px] text-white/50 mb-2 uppercase tracking-wide">Facilidades do Imóvel</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'ARMARIOS_QUARTOS', label: 'Armários Quartos' },
+              { id: 'COZ_PLANEJADA', label: 'Coz. Planejada' },
+              { id: 'VENTILADOR_TETO', label: 'Ventilador Teto' },
+              { id: 'AR_CONDICIONADO', label: 'Ar Condicionado' },
+              { id: 'VARANDA_GOURMET', label: 'Varanda Gourmet' },
+              { id: 'CHURRASQUEIRA', label: 'Churrasqueira' },
+            ].map(f => (
+              <Chip key={f.id} label={f.label} ativo={facilImovel.includes(f.id)} />
+            ))}
+            {imovel.facilidadesImovelOutros && (
+              <Chip label={imovel.facilidadesImovelOutros} ativo />
+            )}
+          </div>
+        </div>
+
         {imovel.descricao && (
-          <div className="py-1.5 border-b border-escuro-600 last:border-0">
-            <span className="text-escuro-300 text-sm block mb-1">Descrição</span>
+          <div>
+            <p className="text-[11px] text-white/50 mb-1.5 uppercase tracking-wide">Descrição</p>
             <p className="text-white text-sm whitespace-pre-wrap leading-relaxed">{imovel.descricao}</p>
           </div>
         )}
       </div>
 
-      {/* Seção 3 — Dados Administrativos */}
+      {/* ── Seção 3 — Dados do Condomínio ── */}
       <div className="card mb-4">
-        <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Dados Administrativos</h3>
-        <Linha label="Proprietário" valor={imovel.proprietario} />
-        <Linha label="Contato" valor={imovel.telProprietario} />
-        <Linha label="Captador" valor={imovel.captador} />
-        <Linha label="Parceria" valor={imovel.parceria ? 'Sim' : null} />
-        <Linha label="Exclusividade" valor={imovel.exclusividade || undefined} />
-        <Linha label="Comissão" valor={imovel.percComissao ? `${imovel.percComissao}%` : null} />
-        <Linha label="Publicar no Site" valor={imovel.publicarSite || undefined} />
-        <Linha label="Publicar Portais" valor={imovel.publicarPortais || undefined} />
-        <Linha label="Destaque" valor={imovel.destaque || undefined} />
-        <Linha label="Cód. IPTU" valor={imovel.codIptu} />
-        <Linha label="Cód. Matrícula" valor={imovel.codMatricula} />
-        {imovel.linkExterno ? (
-          <div className="flex gap-2 py-1.5 border-b border-escuro-600 last:border-0">
-            <span className="text-escuro-300 text-sm min-w-36 shrink-0">Link Externo</span>
-            <span className="text-white text-sm break-all flex items-center">
-              {imovel.linkExterno}
-              <CopiarTextoButton texto={imovel.linkExterno} />
-            </span>
+        <SecTitle n={3} title="Dados do Condomínio" />
+
+        <div className="grid grid-cols-3 gap-x-6 gap-y-5 mb-5">
+          <Campo label="Acesso" valor={imovel.acesso ? (LABEL_ACESSO[imovel.acesso] ?? imovel.acesso) : null} />
+          <Campo label="Andar" valor={imovel.andar != null ? String(imovel.andar) : null} />
+          <div />
+        </div>
+
+        <div>
+          <p className="text-[11px] text-white/50 mb-2 uppercase tracking-wide">Facilidades do Condomínio</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'PISCINA', label: 'Piscina' },
+              { id: 'ACADEMIA', label: 'Academia' },
+              { id: 'SALAO_FESTAS', label: 'Salão de Festas' },
+              { id: 'SALAO_JOGOS', label: 'Salão de Jogos' },
+              { id: 'PLAYGROUND', label: 'Playground' },
+            ].map(f => (
+              <Chip key={f.id} label={f.label} ativo={facilCond.includes(f.id)} />
+            ))}
+            {imovel.facilidadesCondOutros && (
+              <Chip label={imovel.facilidadesCondOutros} ativo />
+            )}
           </div>
-        ) : null}
-        {imovel.slug ? (
-          <Linha label="Link do Site" valor={`https://imoveis.cf8.com.br/imoveis/${imovel.slug}`} />
-        ) : imovel.linkSite ? (
-          <Linha label="Link do Site" valor={imovel.linkSite} />
-        ) : null}
-        <Linha label="Unidade" valor={imovel.unidade?.nome} />
-        <Linha label="Cadastrado em" valor={new Date(imovel.dataCadastro).toLocaleDateString('pt-BR')} />
-        {imovel.obsInternas && (
-          <div className="py-1.5 border-b border-escuro-600 last:border-0">
-            <span className="text-escuro-300 text-sm block mb-1">Observações Internas</span>
-            <p className="text-white text-sm whitespace-pre-wrap">{imovel.obsInternas}</p>
-          </div>
-        )}
+        </div>
       </div>
 
-      {/* Seção 4 — Fotos (por último) */}
+      {/* ── Seção 4 — Dados Administrativos ── */}
+      <div className="card mb-4">
+        <SecTitle title="Dados Administrativos" />
+        <div className="grid grid-cols-3 gap-x-6 gap-y-5">
+
+          <div className="flex items-end pb-0.5">
+            <BadgeBool value={imovel.exclusividade} label="Exclusividade" />
+          </div>
+          <Campo label="Comissão" valor={imovel.percComissao ? `${imovel.percComissao}%` : null} />
+          <Campo label="Cadastrado em" valor={new Date(imovel.dataCadastro).toLocaleDateString('pt-BR')} />
+
+          <div className="col-span-3 flex gap-3 flex-wrap">
+            <BadgeBool value={imovel.publicarSite} label="Publicar no Site" />
+            <BadgeBool value={imovel.publicarPortais} label="Publicar Portais" />
+            <BadgeBool value={imovel.destaque} label="Destaque" />
+          </div>
+
+          <Campo label="Cód. IPTU" valor={imovel.codIptu} />
+          <Campo label="Cód. Matrícula" valor={imovel.codMatricula} />
+          <div />
+
+          {imovel.linkExterno && (
+            <div className="col-span-3">
+              <p className="text-[11px] text-white/50 mb-0.5 uppercase tracking-wide">Link Externo</p>
+              <div className="flex items-center gap-2">
+                <p className="text-white text-sm break-all">{imovel.linkExterno}</p>
+                <CopiarTextoButton texto={imovel.linkExterno} />
+              </div>
+            </div>
+          )}
+
+          {(imovel.slug || imovel.linkSite) && (
+            <div className="col-span-3">
+              <p className="text-[11px] text-white/50 mb-0.5 uppercase tracking-wide">Link do Site</p>
+              <p className="text-white text-sm break-all">
+                {imovel.slug ? `https://imoveis.cf8.com.br/imoveis/${imovel.slug}` : imovel.linkSite}
+              </p>
+            </div>
+          )}
+
+          {imovel.obsInternas && (
+            <div className="col-span-3">
+              <p className="text-[11px] text-white/50 mb-1 uppercase tracking-wide">Observações Internas</p>
+              <p className="text-white text-sm whitespace-pre-wrap">{imovel.obsInternas}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Fotos ── */}
       {fotos.length > 0 && (
         <div className="card mb-4">
-          <h3 className="text-base font-semibold text-dourado-400 border-b border-escuro-400 pb-2 mb-4">Fotos</h3>
+          <SecTitle title="Fotos" />
           <GaleriaFotos imovelId={imovel.id} fotosIniciais={fotos} readOnly />
         </div>
       )}
