@@ -245,9 +245,14 @@ export default async function VisualizarImovelPage({
             )}
             <BadgeSituacao situacao={imovel.situacao} />
           </div>
-          <div className="flex gap-8">
+          <div className="flex gap-8 items-end">
             <Campo label="Unidade" valor={imovel.unidade?.nome} />
             <Campo label="Captador" valor={imovel.captador} />
+            {imovel.parceria && (
+              <span className="px-2.5 py-1 rounded text-xs font-medium bg-dourado-400/20 text-dourado-400 border border-dourado-400/40">
+                Parceria Imobiliária
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -266,23 +271,25 @@ export default async function VisualizarImovelPage({
           <Campo label="Tipo" valor={LABEL_TIPO[imovel.tipo] ?? imovel.tipo} />
           <Campo label="Subtipo" valor={imovel.subtipo ? (LABEL_SUBTIPO[imovel.subtipo] ?? imovel.subtipo) : null} />
 
-          <div className="col-span-2">
-            <Campo label="Logradouro" valor={imovel.logradouro} />
+          {/* Endereço linha 1: Logradouro 60% | Número 20% | Complemento 20% */}
+          <div className="col-span-3 grid grid-cols-5 gap-x-6">
+            <div className="col-span-3"><Campo label="Logradouro" valor={imovel.logradouro} /></div>
+            <Campo label="Número" valor={imovel.numero} />
+            <Campo label="Complemento" valor={imovel.complemento} />
           </div>
-          <Campo label="Número" valor={imovel.numero} />
 
-          <Campo label="Complemento" valor={imovel.complemento} />
-          <Campo label="Bairro" valor={imovel.bairro} />
-          <Campo label="CEP" valor={imovel.cep} />
-
-          <Campo label="Cidade" valor={imovel.cidade} />
-          <Campo label="Estado" valor={imovel.estado} />
-          <Campo label="Edifício/Condomínio" valor={imovel.edificio} />
-
-          <div className="col-span-2">
-            <Campo label="Proprietário" valor={imovel.proprietario} />
+          {/* Endereço linha 2: Cidade 30% | Bairro 30% | Estado 15% | CEP 25% */}
+          <div className="col-span-3 grid grid-cols-4 gap-x-6">
+            <Campo label="Cidade" valor={imovel.cidade} />
+            <Campo label="Bairro" valor={imovel.bairro} />
+            <Campo label="Estado" valor={imovel.estado} />
+            <Campo label="CEP" valor={imovel.cep} />
           </div>
+
+          {/* Proprietário 40% | Contato 30% | Edifício 30% */}
+          <Campo label="Proprietário" valor={imovel.proprietario} />
           <Campo label="Contato do Proprietário" valor={imovel.telProprietario} />
+          <Campo label="Edifício/Condomínio" valor={imovel.edificio} />
 
           <Campo label="Modalidade" valor={modalidadeLabel} />
           <Campo label="Valor Venda/Locação" valor={valorExibir} />
