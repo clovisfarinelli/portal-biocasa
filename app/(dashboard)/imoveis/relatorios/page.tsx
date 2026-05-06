@@ -428,7 +428,6 @@ function AbaImpressao({ perfil }: { perfil: string }) {
 
           .grupo-unidade {
             margin-bottom: 20px;
-            page-break-inside: avoid;
           }
 
           .unidade-header {
