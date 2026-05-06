@@ -348,13 +348,27 @@ function AbaImpressao({ perfil }: { perfil: string }) {
         .join(' | ')
     : ''
 
-  return (
-    <>
-      {/* CSS de impressão */}
-      <style>{`
-        @media print {
-          body > * { display: none !important; }
-          #area-impressao { display: block !important; }
+  const handleImprimir = () => {
+    const conteudo = document.getElementById('area-impressao')?.innerHTML
+    if (!conteudo) return
+
+    const janela = window.open('', '_blank', 'width=800,height=600')
+    if (!janela) return
+
+    janela.document.write(`
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Relatório de Imóveis — Biocasa</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+
+          body {
+            font-family: Arial, sans-serif;
+            color: #000;
+            background: #fff;
+          }
 
           @page {
             size: A4 portrait;
@@ -363,8 +377,56 @@ function AbaImpressao({ perfil }: { perfil: string }) {
 
           .print-hidden { display: none !important; }
 
-          .grupo-unidade { break-inside: avoid; margin-bottom: 16px; }
-          .grupo-captador { break-inside: avoid; margin-bottom: 12px; }
+          .cabecalho-relatorio {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #000;
+          }
+
+          .cabecalho-relatorio .titulo {
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+          }
+
+          .cabecalho-relatorio .data {
+            font-size: 11px;
+            text-align: right;
+          }
+
+          .filtros-ativos {
+            font-size: 10px;
+            color: #555;
+            margin-bottom: 12px;
+          }
+
+          .grupo-unidade {
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+          }
+
+          .unidade-header {
+            font-size: 13px;
+            font-weight: bold;
+            border-bottom: 2px solid #000;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+          }
+
+          .grupo-captador {
+            margin-bottom: 14px;
+            page-break-inside: avoid;
+          }
+
+          .captador-header {
+            font-size: 11px;
+            font-weight: bold;
+            margin: 8px 0 4px 0;
+          }
 
           table {
             border-collapse: collapse;
@@ -372,10 +434,15 @@ function AbaImpressao({ perfil }: { perfil: string }) {
             table-layout: fixed;
           }
 
+          colgroup col:nth-child(1) { width: 8%; }
+          colgroup col:nth-child(2) { width: 10%; }
+          colgroup col:nth-child(3) { width: 42%; }
+          colgroup col:nth-child(4) { width: 16%; }
+          colgroup col:nth-child(5) { width: 14%; }
+          colgroup col:nth-child(6) { width: 10%; }
+
           th {
-            background-color: #f3f3f3 !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            background-color: #f3f3f3;
             font-size: 11px;
             padding: 4px 6px;
             border: 1px solid #ccc;
@@ -389,19 +456,13 @@ function AbaImpressao({ perfil }: { perfil: string }) {
             vertical-align: top;
           }
 
-          .unidade-header {
-            font-size: 13px;
-            font-weight: bold;
-            border-bottom: 2px solid #000;
-            padding-bottom: 4px;
-            margin-bottom: 8px;
-            text-transform: uppercase;
+          td.endereco {
+            word-break: break-word;
+            white-space: normal;
           }
 
-          .captador-header {
-            font-size: 11px;
-            font-weight: bold;
-            margin: 8px 0 4px 0;
+          td.nowrap {
+            white-space: nowrap;
           }
 
           .subtotal {
@@ -416,12 +477,28 @@ function AbaImpressao({ perfil }: { perfil: string }) {
             font-weight: bold;
             text-align: right;
             margin-top: 12px;
-            border-top: 1px solid #000;
+            border-top: 2px solid #000;
             padding-top: 6px;
           }
-        }
-      `}</style>
+        </style>
+      </head>
+      <body>
+        ${conteudo}
+      </body>
+      </html>
+    `)
 
+    janela.document.close()
+    janela.focus()
+
+    setTimeout(() => {
+      janela.print()
+      janela.close()
+    }, 500)
+  }
+
+  return (
+    <>
       {/* Filtros — ocultos na impressão */}
       <div className="print:hidden bg-escuro-500 rounded-xl p-5 mb-6">
         <div className="flex flex-wrap gap-3 items-end">
@@ -471,7 +548,7 @@ function AbaImpressao({ perfil }: { perfil: string }) {
           <button onClick={buscar} className="btn-primary text-sm px-5 self-end">
             Filtrar
           </button>
-          <button onClick={() => window.print()} className="btn-secondary text-sm px-4 self-end flex items-center gap-2">
+          <button onClick={handleImprimir} className="btn-secondary text-sm px-4 self-end flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
@@ -547,12 +624,12 @@ function AbaImpressao({ perfil }: { perfil: string }) {
                         <tbody>
                           {gm.imoveis.map(im => (
                             <tr key={im.id}>
-                              <td style={{ whiteSpace: 'nowrap' }}>{im.codigoRef}</td>
-                              <td style={{ whiteSpace: 'nowrap' }}>{formatarData(im.dataCadastro)}</td>
-                              <td style={{ wordBreak: 'break-word', whiteSpace: 'normal', fontSize: '10px' }}>{enderecoCompleto(im)}</td>
-                              <td style={{ whiteSpace: 'nowrap' }}>{im.bairro}</td>
-                              <td style={{ whiteSpace: 'nowrap' }}>{im.cidade}</td>
-                              <td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>{valorExibido(im)}</td>
+                              <td className="nowrap">{im.codigoRef}</td>
+                              <td className="nowrap">{formatarData(im.dataCadastro)}</td>
+                              <td className="endereco">{enderecoCompleto(im)}</td>
+                              <td className="nowrap">{im.bairro}</td>
+                              <td className="nowrap">{im.cidade}</td>
+                              <td className="nowrap" style={{ textAlign: 'right' }}>{valorExibido(im)}</td>
                             </tr>
                           ))}
                         </tbody>
