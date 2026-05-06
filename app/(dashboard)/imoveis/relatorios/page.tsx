@@ -386,15 +386,38 @@ function AbaImpressao({ perfil }: { perfil: string }) {
             border-bottom: 2px solid #000;
           }
 
+          .cabecalho-relatorio svg {
+            width: 24px;
+            height: 24px;
+          }
+
+          .cabecalho-relatorio .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .cabecalho-relatorio .logo-icone {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+          }
+
           .cabecalho-relatorio .titulo {
             font-size: 14px;
             font-weight: bold;
             text-align: center;
+            flex: 1;
+            margin: 0 16px;
           }
 
           .cabecalho-relatorio .data {
             font-size: 11px;
             text-align: right;
+            white-space: nowrap;
           }
 
           .filtros-ativos {
@@ -573,17 +596,17 @@ function AbaImpressao({ perfil }: { perfil: string }) {
         <div id="area-impressao" className="bg-white text-black rounded-xl p-6">
 
           {/* Cabeçalho */}
-          <div className="flex items-center justify-between pb-3 border-b border-gray-300 mb-2">
+          <div className="cabecalho-relatorio flex items-center justify-between pb-3 border-b border-gray-300 mb-2">
             <LogoBiocasa />
-            <p className="font-bold text-base text-center flex-1 mx-4">Relatório de Imóveis Cadastrados</p>
-            <p className="text-xs text-gray-500 text-right whitespace-nowrap">
+            <p className="titulo font-bold text-base text-center flex-1 mx-4">Relatório de Imóveis Cadastrados</p>
+            <p className="data text-xs text-gray-500 text-right whitespace-nowrap">
               Emitido em:<br />{formatarDataHora(dados.geradoEm)}
             </p>
           </div>
 
           {/* Filtros ativos */}
           {filtrosTexto && (
-            <p className="text-xs text-gray-500 mb-4">Filtros: {filtrosTexto}</p>
+            <p className="filtros-ativos text-xs text-gray-500 mb-4">Filtros: {filtrosTexto}</p>
           )}
 
           {/* Grupos: Unidade → Captador → Modalidade */}
