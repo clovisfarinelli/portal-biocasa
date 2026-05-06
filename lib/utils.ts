@@ -62,6 +62,19 @@ export function obterLimiteArquivo(tipo: string): number {
 
 const SUFIXO_PARCERIA = '\n\nImóvel em Parceria Imobiliária'
 
+export function parsearOutrosArray(valor: string | null | undefined): string[] {
+  if (!valor) return []
+  try {
+    const parsed = JSON.parse(valor)
+    if (Array.isArray(parsed)) return parsed.filter(Boolean)
+    if (typeof parsed === 'string' && parsed.trim()) return [parsed.trim()]
+    return []
+  } catch {
+    if (valor.trim()) return [valor.trim()]
+    return []
+  }
+}
+
 export function parsearOutros(valor: string | null | undefined): string {
   if (!valor) return '—'
   try {

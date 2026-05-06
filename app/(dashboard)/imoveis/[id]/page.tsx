@@ -7,7 +7,7 @@ import GaleriaFotos from '@/components/imoveis/GaleriaFotos'
 import CopiarTextoButton from '@/components/imoveis/CopiarTextoButton'
 import CompartilharButton from '@/components/imoveis/CompartilharButton'
 import DuplicarButton from '@/components/imoveis/DuplicarButton'
-import { formatarMoeda, parsearOutros } from '@/lib/utils'
+import { formatarMoeda, parsearOutrosArray } from '@/lib/utils'
 
 const LABEL_TIPO: Record<string, string> = {
   CASA: 'Casa', APARTAMENTO: 'Apartamento', TERRENO: 'Terreno', CHACARA: 'Chácara',
@@ -345,9 +345,9 @@ export default async function VisualizarImovelPage({
             ].map(f => (
               <Chip key={f.id} label={f.label} ativo={facilImovel.includes(f.id)} />
             ))}
-            {imovel.facilidadesImovelOutros && (
-              <Chip label={parsearOutros(imovel.facilidadesImovelOutros)} ativo />
-            )}
+            {parsearOutrosArray(imovel.facilidadesImovelOutros).map(item => (
+              <Chip key={item} label={item} ativo />
+            ))}
           </div>
         </div>
 
@@ -381,9 +381,9 @@ export default async function VisualizarImovelPage({
             ].map(f => (
               <Chip key={f.id} label={f.label} ativo={facilCond.includes(f.id)} />
             ))}
-            {imovel.facilidadesCondOutros && (
-              <Chip label={parsearOutros(imovel.facilidadesCondOutros)} ativo />
-            )}
+            {parsearOutrosArray(imovel.facilidadesCondOutros).map(item => (
+              <Chip key={item} label={item} ativo />
+            ))}
           </div>
         </div>
       </div>
