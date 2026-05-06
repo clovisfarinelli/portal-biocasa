@@ -145,11 +145,11 @@ function Cb({ m, label }: { m?: boolean | null; label: string }) {
   )
 }
 
-function Row({ children, mb = 3 }: { children: React.ReactNode; mb?: number }) {
+function Row({ children, mb = 4 }: { children: React.ReactNode; mb?: number }) {
   return <div style={{ ...S.row, marginBottom: mb }}>{children}</div>
 }
 
-function CbRow({ label, children, mb = 3 }: { label?: string; children: React.ReactNode; mb?: number }) {
+function CbRow({ label, children, mb = 4 }: { label?: string; children: React.ReactNode; mb?: number }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1px 0', marginBottom: mb }}>
       {label && <span style={{ ...S.label, marginRight: 4 }}>{label}</span>}
@@ -209,11 +209,11 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
     <div style={{
       fontFamily: 'Arial, Helvetica, sans-serif',
       fontSize: '8pt',
-      lineHeight: '1.5',
+      lineHeight: '1.58',
       color: '#000',
       background: '#fff',
       width: '100%',
-      padding: '1mm 5mm 1mm',
+      padding: '2mm 5mm 2mm',
       boxSizing: 'border-box',
     }}>
       {/* ── Cabeçalho (1 linha) ── */}
