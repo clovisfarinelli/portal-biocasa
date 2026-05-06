@@ -98,15 +98,26 @@ export async function GET(req: NextRequest) {
 
   if (filtros.busca) {
     const b = filtros.busca
-    const andBusca = {
-      OR: [
-        { codigoRef: { contains: b, mode: 'insensitive' as const } },
-        { nome: { contains: b, mode: 'insensitive' as const } },
-        { bairro: { contains: b, mode: 'insensitive' as const } },
-        { proprietario: { contains: b, mode: 'insensitive' as const } },
-      ],
+    const ci = { mode: 'insensitive' as const }
+    const orBusca: any[] = [
+      { codigoRef:    { contains: b, ...ci } },
+      { nome:         { contains: b, ...ci } },
+      { bairro:       { contains: b, ...ci } },
+      { proprietario: { contains: b, ...ci } },
+      { logradouro:   { contains: b, ...ci } },
+      { cidade:       { contains: b, ...ci } },
+      { captador:     { contains: b, ...ci } },
+      { edificio:     { contains: b, ...ci } },
+      { acesso:       { contains: b, ...ci } },
+      { facilidadesImovel: { contains: b, ...ci } },
+      { facilidadesCond:   { contains: b, ...ci } },
+    ]
+    const n = parseInt(b, 10)
+    if (!isNaN(n)) {
+      orBusca.push({ vagasGaragem:    { contains: b, ...ci } })
+      orBusca.push({ totalBanheiros:  { contains: b, ...ci } })
     }
-    where.AND = [andBusca]
+    where.AND = [{ OR: orBusca }]
   }
 
   if (filtros.valor_min || filtros.valor_max) {
