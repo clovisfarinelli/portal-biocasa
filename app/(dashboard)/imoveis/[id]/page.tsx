@@ -7,7 +7,7 @@ import GaleriaFotos from '@/components/imoveis/GaleriaFotos'
 import CopiarTextoButton from '@/components/imoveis/CopiarTextoButton'
 import CompartilharButton from '@/components/imoveis/CompartilharButton'
 import DuplicarButton from '@/components/imoveis/DuplicarButton'
-import { formatarMoeda, parsearOutrosArray } from '@/lib/utils'
+import { formatarMoeda, formatarTelefone, parsearOutrosArray } from '@/lib/utils'
 
 const LABEL_TIPO: Record<string, string> = {
   CASA: 'Casa', APARTAMENTO: 'Apartamento', TERRENO: 'Terreno', CHACARA: 'Chácara',
@@ -177,6 +177,22 @@ export default async function VisualizarImovelPage({
   const modalidadeLabel = modalidade === 'VENDA' ? 'Venda' : modalidade === 'LOCACAO' ? 'Locação' : 'Venda + Locação'
   const vistaMarlabel = imovel.tipoVistaMar === 'FRENTE' ? 'Frente' : imovel.tipoVistaMar === 'LATERAL' ? 'Lateral' : null
 
+  const enderecoConcat = (() => {
+    let base = imovel.logradouro ?? ''
+    if (imovel.numero && imovel.complemento) {
+      base += `, ${imovel.numero} - ${imovel.complemento}`
+    } else if (imovel.numero) {
+      base += `, ${imovel.numero}`
+    } else if (imovel.complemento) {
+      base += ` - ${imovel.complemento}`
+    }
+    const partes = [base]
+    if (imovel.bairro) partes.push(imovel.bairro)
+    if (imovel.cidade && imovel.estado) partes.push(`${imovel.cidade}/${imovel.estado}`)
+    else if (imovel.cidade) partes.push(imovel.cidade)
+    return partes.filter(Boolean).join(', ')
+  })()
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
 
@@ -199,7 +215,6 @@ export default async function VisualizarImovelPage({
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <BadgeSituacao situacao={imovel.situacao} />
           {podeEditar && (
             <Link href={`/imoveis/${imovel.id}/editar?voltar=${encodeURIComponent(voltarUrl)}`} className="btn-primary flex items-center gap-2 text-sm">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -249,8 +264,8 @@ export default async function VisualizarImovelPage({
             <Campo label="Unidade" valor={imovel.unidade?.nome} />
             <Campo label="Captador" valor={imovel.captador} />
             {imovel.parceria && (
-              <span className="px-2.5 py-1 rounded text-xs font-medium bg-dourado-400/20 text-dourado-400 border border-dourado-400/40">
-                Parceria Imobiliária
+              <span className="px-2.5 py-1 rounded text-xs font-medium bg-green-600 text-white">
+                ✓ Parceria Imobiliária
               </span>
             )}
           </div>
@@ -271,31 +286,22 @@ export default async function VisualizarImovelPage({
           <Campo label="Tipo" valor={LABEL_TIPO[imovel.tipo] ?? imovel.tipo} />
           <Campo label="Subtipo" valor={imovel.subtipo ? (LABEL_SUBTIPO[imovel.subtipo] ?? imovel.subtipo) : null} />
 
-          {/* Endereço linha 1: Logradouro 60% | Número 20% | Complemento 20% */}
-          <div className="col-span-3 grid grid-cols-5 gap-x-6">
-            <div className="col-span-3"><Campo label="Logradouro" valor={imovel.logradouro} /></div>
-            <Campo label="Número" valor={imovel.numero} />
-            <Campo label="Complemento" valor={imovel.complemento} />
+          {/* Endereço concatenado */}
+          <div className="col-span-3">
+            <p className="text-[11px] text-white/50 mb-0.5 uppercase tracking-wide">Endereço</p>
+            <p className="text-white text-sm">{enderecoConcat || '—'}</p>
+            {imovel.cep && (
+              <p className="text-xs text-white/40 mt-0.5">CEP: {imovel.cep}</p>
+            )}
           </div>
 
-          {/* Endereço linha 2: Cidade 30% | Bairro 30% | Estado 15% | CEP 25% */}
-          <div className="col-span-3 grid grid-cols-4 gap-x-6">
-            <Campo label="Cidade" valor={imovel.cidade} />
-            <Campo label="Bairro" valor={imovel.bairro} />
-            <Campo label="Estado" valor={imovel.estado} />
-            <Campo label="CEP" valor={imovel.cep} />
-          </div>
-
-          {/* Proprietário 40% | Contato 30% | Edifício 30% */}
+          {/* Proprietário | Contato | Edifício */}
           <Campo label="Proprietário" valor={imovel.proprietario} />
-          <Campo label="Contato do Proprietário" valor={imovel.telProprietario} />
+          <Campo label="Contato do Proprietário" valor={formatarTelefone(imovel.telProprietario)} />
           <Campo label="Edifício/Condomínio" valor={imovel.edificio} />
 
           <Campo label="Modalidade" valor={modalidadeLabel} />
-          <Campo label="Valor Venda/Locação" valor={valorExibir} />
-          <div className="flex items-end pb-0.5">
-            <BadgeBool value={imovel.parceria} label="Parceria Imobiliária" />
-          </div>
+          <div className="col-span-2"><Campo label="Valor Venda/Locação" valor={valorExibir} /></div>
 
           <div className="col-span-3 grid grid-cols-4 gap-6">
             <Campo label="Condomínio R$" valor={imovel.valorCondominio ? formatarMoeda(imovel.valorCondominio) : null} />

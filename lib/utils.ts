@@ -62,6 +62,14 @@ export function obterLimiteArquivo(tipo: string): number {
 
 const SUFIXO_PARCERIA = '\n\nImóvel em Parceria Imobiliária'
 
+export function formatarTelefone(valor: string | null | undefined): string {
+  if (!valor) return '—'
+  const digits = valor.replace(/\D/g, '')
+  if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+  if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+  return valor
+}
+
 export function parsearOutrosArray(valor: string | null | undefined): string[] {
   if (!valor) return []
   try {
