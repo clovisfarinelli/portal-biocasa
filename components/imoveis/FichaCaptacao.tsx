@@ -163,7 +163,7 @@ function SecTitle({ n, title }: { n: number; title: string }) {
     <div className="ficha-secao-titulo" style={{
       fontSize: '7pt', fontWeight: 'bold', textTransform: 'uppercase',
       background: '#eee', color: '#000', padding: '1px 4px',
-      marginBottom: 3, letterSpacing: 0.3,
+      marginBottom: 4, letterSpacing: 0.3,
     }}>
       {n}. {title}
     </div>
@@ -173,7 +173,7 @@ function SecTitle({ n, title }: { n: number; title: string }) {
 function Sec({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
-      border: '1px solid #bbb', padding: '3px 6px', marginBottom: 3,
+      border: '1px solid #bbb', padding: '4px 6px', marginBottom: 4,
       background: 'white',
     }}>
       {children}
@@ -209,7 +209,7 @@ function FichaUnica({ dados }: { dados?: DadosImovelFicha }) {
     <div style={{
       fontFamily: 'Arial, Helvetica, sans-serif',
       fontSize: '8pt',
-      lineHeight: '1.58',
+      lineHeight: '1.7',
       color: '#000',
       background: '#fff',
       width: '100%',

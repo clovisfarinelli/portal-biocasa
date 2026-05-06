@@ -480,9 +480,16 @@ function ImoveisContent() {
           {totalPaginas > 1 && (
             <div className="flex items-center justify-center gap-3">
               <button
-                onClick={() => mudarPagina(Math.max(1, pagina - 1))}
+                onClick={() => mudarPagina(1)}
                 disabled={pagina === 1}
-                className="btn-secondary text-sm px-4 disabled:opacity-40"
+                className="btn-secondary text-sm px-4 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                «&nbsp;Primeira
+              </button>
+              <button
+                onClick={() => mudarPagina(pagina - 1)}
+                disabled={pagina === 1}
+                className="btn-secondary text-sm px-4 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 ← Anterior
               </button>
@@ -490,11 +497,18 @@ function ImoveisContent() {
                 Página {pagina} de {totalPaginas}
               </span>
               <button
-                onClick={() => mudarPagina(Math.min(totalPaginas, pagina + 1))}
+                onClick={() => mudarPagina(pagina + 1)}
                 disabled={pagina === totalPaginas}
-                className="btn-secondary text-sm px-4 disabled:opacity-40"
+                className="btn-secondary text-sm px-4 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Próxima →
+              </button>
+              <button
+                onClick={() => mudarPagina(totalPaginas)}
+                disabled={pagina === totalPaginas}
+                className="btn-secondary text-sm px-4 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Última&nbsp;»
               </button>
             </div>
           )}
