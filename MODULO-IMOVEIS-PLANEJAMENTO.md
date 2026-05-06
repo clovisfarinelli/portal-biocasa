@@ -7,46 +7,79 @@
 ## O que foi implementado
 
 ### Banco de dados
-Tabela `imoveis` no PostgreSQL com todos os campos planejados.
-Campos principais: ref, tipo, pretensao, status, origem, nome, logradouro,
-numero, complemento, bairro, cidade, estado, cep, valor, condominio, iptu,
-area_privativa, area_total, quartos, banheiros, vagas, andar,
-aceita_financ, aceita_permuta, exclusividade, destaque,
-descricao_curta, tags, link_kenlo, fotos, captador, unidadeId.
+Tabela `imoveis` no PostgreSQL (model Prisma: `Imovel`).
+
+Campos reais (nomes Prisma):
+- **Identificação:** `codigoRef` (unique), `nome`
+- **Classificação:** `finalidade`, `tipo`, `subtipo`
+- **Endereço:** `logradouro`, `numero`, `complemento`, `bairro`, `cidade`, `estado`, `cep`
+- **Edifício:** `edificio`, `andar`, `acesso`
+- **Proprietário:** `proprietario`, `telProprietario`
+- **Captação:** `captador`, `parceria`, `nomeParceiro`
+- **Modalidade e valores:** `modalidade` (VENDA/LOCACAO/AMBOS), `valorVenda`, `valorLocacao`, `locacaoPacote`, `valorCondominio`, `valorIptu`
+- **Características:** `areaUtil`, `areaTotal`, `dormitorios`, `suites`, `totalBanheiros`, `vagasGaragem`, `tipoGaragem`, `situacaoImovel`, `dependencia`, `vistaMar`, `tipoVistaMar`
+- **Facilidades:** `facilidadesImovel`, `facilidadesImovelOutros`, `facilidadesCond`, `facilidadesCondOutros` (JSON arrays serializados como String)
+- **Negociação:** `aceitaPermuta`, `aceitaFinanc`, `documentacaoOk`, `exclusividade`
+- **Publicação:** `publicarSite`, `publicarPortais`, `destaque`
+- **Links e códigos:** `linkSite`, `linkExterno`, `codIptu`, `codMatricula`, `slug` (único, gerado automaticamente)
+- **Descrições:** `descricao`, `obsInternas`
+- **Comissão:** `percComissao`
+- **Mídia:** `fotos` (JSON array: `[{url, ordem, principal}]`)
+- **Status:** `situacao` (DISPONIVEL/VENDIDO/ALUGADO)
+- **Relação:** `unidadeId` → FK para `unidades`
 
 ### APIs implementadas
-- GET  /api/imoveis — lista com filtros
-- GET  /api/imoveis/[id] — detalhe completo
-- POST /api/imoveis — cadastrar
-- PUT  /api/imoveis/[id] — editar
-- DELETE /api/imoveis/[id] — remover
-- GET  /api/imoveis/relatorios — dados para gráficos
-- GET  /api/imoveis/relatorios/impressao — dados para relatório imprimível
+- `GET  /api/imoveis` — lista com filtros + busca texto livre (14 campos) + paginação + ordenação
+- `GET  /api/imoveis/[id]` — detalhe completo
+- `POST /api/imoveis` — cadastrar (MASTER/PROPRIETARIO/ASSISTENTE)
+- `PUT  /api/imoveis/[id]` — editar (MASTER/PROPRIETARIO/ASSISTENTE)
+- `DELETE /api/imoveis/[id]` — remover (MASTER apenas)
+- `POST /api/imoveis/[id]/duplicar` — duplica sem fotos, novo codigoRef e slug
+- `POST /api/imoveis/gerar-descricao` — gera descrição de marketing via Gemini 2.5 Flash
+- `POST /api/imoveis/[id]/fotos` — upload + compressão WebP via sharp
+- `DELETE /api/imoveis/[id]/fotos` — remove foto do Blob + atualiza JSON
+- `GET  /api/imoveis/[id]/fotos/zip` — download ZIP de todas as fotos
+- `GET  /api/imoveis/fotos/download` — proxy autenticado para fotos privadas (dashboard)
+- `GET  /api/imoveis/publico` — listagem pública sem auth (filtra publicarSite=true)
+- `GET  /api/imoveis/publico/[ref]` — detalhe público por codigoRef
+- `GET  /api/imoveis/publico/fotos` — proxy de fotos para o site público (sem auth, cache 1h)
+- `GET  /api/imoveis/relatorios` — estatísticas (total, porStatus, porBairro top10, porCorretor)
+- `GET  /api/imoveis/relatorios/impressao` — lista agrupada para relatório imprimível A4
 
 ### Interface implementada
-- /dashboard/imoveis — listagem com filtros persistidos via sessionStorage
-- /dashboard/imoveis/novo — formulário de cadastro
-- /dashboard/imoveis/[id] — visualização
-- /dashboard/imoveis/[id]/editar — edição
-- /dashboard/imoveis/relatorios — gráficos + relatório imprimível A4
+- `/imoveis` — listagem com filtros persistidos via sessionStorage
+- `/imoveis/novo` — formulário de cadastro (5 seções)
+- `/imoveis/[id]` — visualização completa (4 seções em grid)
+- `/imoveis/[id]/editar` — edição + galeria de fotos
+- `/imoveis/relatorios` — aba Gráficos (donut + barras) + aba Relatório imprimível A4
+- `/imprimir/ficha-captacao` — ficha de captação para impressão (meia folha A4)
+- `/imprimir/imoveis/[id]/ficha` — ficha completa do imóvel para impressão
+- `imoveis.cf8.com.br` — site público com homepage + detalhe por `/imoveis/[ref]`
 
-### Funcionalidades extras (além do planejamento original)
-- Duplicar imóvel
-- Galeria de fotos com lightbox
-- Gerador de descrição com IA (Gemini)
-- Site público: imoveis.cf8.com.br (roteamento por hostname no middleware)
-- Ficha de captação imprimível
-- Relatório imprimível A4 com agrupamento por Unidade → Captador → Modalidade
+### Funcionalidades implementadas
+- Galeria de fotos com upload, drag-reorder, lightbox e definição de foto principal
+- Gerador de descrição com IA (Gemini) — 150–250 palavras, 3–4 parágrafos
+- Duplicar imóvel (sem fotos, novo codigoRef/slug)
+- Site público sem autenticação (imoveis.cf8.com.br) via roteamento por hostname no middleware
+- Ficha de captação imprimível (meia folha A4)
+- Relatório imprimível A4 agrupado por Unidade → Captador → Modalidade
 - Filtros persistidos via sessionStorage (limpos ao sair do módulo)
+- Segurança CORRETOR: somente leitura, campos sensíveis ocultos (proprietário, telefone, IPTU, matrícula, obs internas, comissão)
+- Download ZIP de todas as fotos de um imóvel
+- Compartilhar: copia linkExterno para área de transferência
+- Copiar ficha para WhatsApp
 
 ### Componentes criados
-- components/imoveis/FichaCaptacao.tsx
-- components/imoveis/ImovelForm.tsx
-- components/imoveis/GaleriaFotos.tsx
-- components/imoveis/GerenciarFotosModal.tsx
-- components/imoveis/DuplicarButton.tsx
-- components/imoveis/Lightbox.tsx
-- components/imoveis/GaleriaPublica.tsx
+- `components/imoveis/ImovelForm.tsx` — formulário completo (5 seções)
+- `components/imoveis/GaleriaFotos.tsx` — upload + drag-reorder + salvar ordem
+- `components/imoveis/GerenciarFotosModal.tsx` — modal fullscreen de galeria
+- `components/imoveis/FichaCaptacao.tsx` — ficha para impressão meia folha A4
+- `components/imoveis/DuplicarButton.tsx` — botão duplicar imóvel
+- `components/imoveis/Lightbox.tsx` — lightbox de fotos (ESC + swipe)
+- `components/imoveis/GaleriaPublica.tsx` — galeria para site público (sem auth)
+- `components/imoveis/CompartilharButton.tsx` — copia linkExterno para área de transferência
+- `components/imoveis/CopiarFichaButton.tsx` — copia ficha para WhatsApp
+- `components/imoveis/CopiarTextoButton.tsx` — copia texto genérico
 
 ## Pendências
 | # | Item | Prioridade |
@@ -58,7 +91,8 @@ descricao_curta, tags, link_kenlo, fotos, captador, unidadeId.
 
 ## Padrão de filtros (replicar em outros módulos)
 Filtros de listagem persistidos via sessionStorage:
-- Chave: biocasa:imoveis:filtros
-- Salvar ao clicar Filtrar
-- Limpar ao sair do módulo (useRef navegandoInternamente)
+- Chave: `biocasa:imoveis:filtros`
+- Salvar ao clicar Filtrar ou mudar página
+- Limpar ao sair do módulo (`useRef navegandoInternamente`)
 - Iniciar sempre limpo (sem defaults pré-selecionados)
+- Prioridade: URL params > sessionStorage > vazio
