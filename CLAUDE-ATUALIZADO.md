@@ -1,5 +1,5 @@
 # Portal Biocasa — Guia de Arquitetura para Claude Code
-*Atualizado: Maio 2026 (Sessão 9: Relatórios de Imóveis, Filtros, Segurança Corretor)*
+*Atualizado: Maio 2026 (Sessão 10: LGPD — Consentimento, Páginas Legais, Retenção de Dados)*
 
 Este arquivo documenta a arquitetura completa, decisões técnicas e convenções do projeto.
 
@@ -278,9 +278,15 @@ O `middleware.ts` cobre três camadas:
 ### 2. API pública de imóveis
 - `/api/imoveis/publico/*` passa sem autenticação (listagem e detalhe público)
 
-### 3. Rotas protegidas
+### 3. Rotas públicas adicionais (sem auth)
+- `/privacidade` e `/termos` — páginas legais acessíveis sem login
+- `/api/cron/*` — autenticação própria via Bearer token (`CRON_SECRET`); bypass do NextAuth
+
+### 4. Rotas protegidas
 - Sem token → redirect `/login` (pages) ou 401 (API)
 - 2FA enforçado para MASTER após período de carência (24h)
+- **Consentimento LGPD:** todas as rotas autenticadas exigem `token.consentimentoEm`; sem consentimento → redirect `/lgpd/consentimento` (pages) ou 403 (API)
+  - Isentas: `ROTAS_LIVRES_CONSENTIMENTO = ['/lgpd', '/api/lgpd', '/api/auth', '/api/2fa', '/login', '/configurar-2fa', '/privacidade', '/termos']`
 - Módulo Imóveis: `/imoveis/*` e `/api/imoveis/*` exigem `acessoImob=true` para não-admins
 - Módulo Incorporação: `/chat/*` e `/api/analises/*` exigem `acessoIncorp=true` para não-admins
 
@@ -608,17 +614,34 @@ CHATWOOT_PLATFORM_TOKEN="<token de super-admin do Chatwoot>"
 
 ## LGPD e Conformidade (Hub Unificado Sessão 4) ✅
 
-### Documentos legais
-- Política de Privacidade e Termos de Uso publicados no portal (footer + tela de login)
+### 4.1 — Documentos legais
+- `app/(auth)/privacidade/page.tsx` — Política de Privacidade (pública, fundo branco, max-w-800px)
+- `app/(auth)/termos/page.tsx` — Termos de Uso (mesma estrutura)
+- Footer no dashboard layout com links para ambas as páginas
+- `LGPD-REGISTRO-TRATAMENTO.md` — registro interno Art. 37 (controlador, operadores, atividades, retenção)
 
-### Retenção de dados (Task 4.3)
-- Rotina automática de limpeza: análises 5 anos, uploads 2 anos, logs_acesso 1 ano, logs_erro 6 meses
+### 4.2 — Consentimento no primeiro login
+- Schema: campos `consentimentoEm DateTime?` e `consentimentoIp String?` na tabela `usuarios`
+- `app/api/lgpd/consentimento/route.ts` — POST grava data + IP no banco
+- `app/(auth)/lgpd/consentimento/page.tsx` — tela de aceite (checkbox obrigatório)
+- JWT: `trigger === 'update'` atualiza `token.consentimentoEm` sem novo login
+- Middleware verifica `token.consentimentoEm` em todas as rotas autenticadas
 
-### Soft-delete de usuários (Task 4.4)
+### 4.3 — Retenção de dados via Vercel Cron
+- `app/api/cron/retencao/route.ts` — GET autenticado via `Bearer CRON_SECRET`
+- Schedule: `0 3 1 * *` (dia 1 de cada mês, 03:00 UTC) em `vercel.json`
+- Etapas: análises > 5 anos (+ blobs Vercel) → arquivos_analise > 2 anos → logs_acesso > 1 ano → logs_erro > 6 meses
+- Cada etapa tem `try/catch` independente; resultado registrado em `logs_erro`
+- Middleware: `/api/cron/*` bypassa NextAuth (autenticação própria via Bearer)
+
+### 4.4 — Soft-delete de usuários
 - `DELETE /api/usuarios/[id]` → `ativo=false` + desassociação Chatwoot + log
 - Login com conta desativada → mensagem específica
 
-**Nota:** O campo `consentimentoEm`/`consentimentoIp` planejado (Task 4.2) não foi implementado no schema.
+### 4.5 — Registro de tratamento interno
+- `LGPD-REGISTRO-TRATAMENTO.md` na raiz — Art. 37 LGPD
+- Controlador: CF8 Negócios Imobiliários Ltda (CNPJ 31.399.238/0001-65)
+- Operadores: Vercel, Google LLC (Gemini), Hetzner
 
 ## Segurança — Implementado ✅
 | Item | Status | Detalhes |
@@ -646,6 +669,7 @@ DOLAR_REAL_PADRAO="5.50"
 API_KEY_N8N="<chave aleatória forte>"            # Auth para integração n8n
 CHATWOOT_PLATFORM_TOKEN="<super-admin token>"    # SSO Chatwoot
 RESEND_CONFIG="<api_key>|<from@email.com>"       # Email convites e alertas (formato: key|from)
+CRON_SECRET="<openssl rand -base64 32>"          # Auth Bearer do endpoint /api/cron/retencao
 ```
 
 ## Comandos Úteis
@@ -687,6 +711,34 @@ curl https://portal.cf8.com.br/api/diagnostico?debug=biocasa2026
 - CORRETOR tem acesso somente leitura ao módulo de imóveis
 - Campos sensíveis ocultos na listagem e no detalhe: proprietário, telefone, IPTU, matrícula, obs internas, comissão
 
+## Sessão 10 — LGPD: Consentimento, Páginas Legais e Retenção de Dados (Maio 2026) ✅
+
+### Consentimento no primeiro login
+- Schema: `consentimentoEm DateTime?` e `consentimentoIp String?` adicionados à tabela `usuarios` (`npx prisma db push`)
+- `POST /api/lgpd/consentimento` — grava data e IP; retorna `consentimentoEm` para o cliente
+- `app/(auth)/lgpd/consentimento/page.tsx` — tela de aceite com checkbox; chama `update({ consentimentoEm })` do `useSession()` para atualizar o JWT sem novo login
+- JWT callback com `trigger === 'update'` propaga `consentimentoEm` ao token
+- Middleware: todas as rotas autenticadas verificam `token.consentimentoEm`
+
+### Páginas legais públicas
+- `app/(auth)/privacidade/page.tsx` — Política de Privacidade (bg-white, max-w-800px, botão "← Voltar")
+- `app/(auth)/termos/page.tsx` — Termos de Uso (mesma estrutura visual)
+- Links atualizados na tela de consentimento (`href="/privacidade"` e `href="/termos"`)
+- Footer no `app/(dashboard)/layout.tsx`: `© 2026 CF8 · Portal Biocasa · Política de Privacidade · Termos de Uso`
+- Middleware: `/privacidade` e `/termos` retornam antes do `getToken()` (sem auth)
+- Middleware: `/privacidade` e `/termos` adicionados ao `ROTAS_LIVRES_CONSENTIMENTO`
+
+### Retenção de dados via Vercel Cron
+- `app/api/cron/retencao/route.ts` — GET com autenticação Bearer (`CRON_SECRET`)
+- `vercel.json` — seção `crons` adicionada: schedule `0 3 1 * *` (dia 1, 03:00 UTC)
+- Middleware: `/api/cron/*` bypassa NextAuth completamente
+- `.env.example` e `.env.local` atualizados com `CRON_SECRET`
+
+### Documentação LGPD
+- `LGPD-REGISTRO-TRATAMENTO.md` — Registro de Atividades de Tratamento (Art. 37)
+  - Controlador, operadores, 5 atividades de tratamento, direitos dos titulares, medidas de segurança
+  - Dados preenchidos: CNPJ 31.399.238/0001-65, Av. Cons. Nebias 671, santos@biocasaimob.com.br
+
 ## Convenções de Código
 - Arquivos: PascalCase componentes, camelCase libs
 - Variáveis/funções: camelCase em português
@@ -718,7 +770,7 @@ curl https://portal.cf8.com.br/api/diagnostico?debug=biocasa2026
 | 13 | Onboarding automatizado de novas unidades (Hub Sessão 8) | Média | ⏳ |
 | 14 | Paginação no histórico da Sidebar | Baixa | ⏳ |
 | 15 | Notificação email quando limite de análises atingido | Baixa | ⏳ |
-| 16 | consentimentoEm/consentimentoIp na tabela usuarios (LGPD Task 4.2) | Baixa | ⏳ |
+| 16 | consentimentoEm/consentimentoIp na tabela usuarios (LGPD Task 4.2) | Baixa | ✅ |
 
 ## Usuário inicial (seed)
 | Email | Senha | Perfil |

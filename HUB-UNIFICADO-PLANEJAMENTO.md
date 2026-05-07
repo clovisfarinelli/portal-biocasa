@@ -118,16 +118,22 @@ MASTER já vê tudo de todas as unidades por design.
 **Implementada em: Maio 2026**
 
 ### 4.1 Documentos legais ✅
-- Política de Privacidade e Termos de Uso redigidos
-- Publicados no portal (footer + tela de login)
+- `app/(auth)/privacidade/page.tsx` — Política de Privacidade (pública, sem auth)
+- `app/(auth)/termos/page.tsx` — Termos de Uso (mesma estrutura)
+- Footer no dashboard (`layout.tsx`) com links para ambas as páginas
+- Middleware: `/privacidade` e `/termos` isentos de auth e de consentimento LGPD
 
 ### 4.2 Consentimento no primeiro login ✅
-- Checkbox obrigatório: "Li e aceito a Política de Privacidade"
-- Data e IP do aceite registrados na tabela usuarios
+- Schema: `consentimentoEm DateTime?` + `consentimentoIp String?` em `usuarios`
+- `POST /api/lgpd/consentimento` — grava data e IP no banco
+- `app/(auth)/lgpd/consentimento/page.tsx` — tela de aceite com checkbox obrigatório
+- JWT atualizado via `trigger === 'update'` sem novo login; middleware verifica `token.consentimentoEm`
 
 ### 4.3 Política de retenção de dados ✅
-- Rotina de limpeza automática implementada (cron)
-- Retenção: análises 5 anos, uploads 2 anos, logs_acesso 1 ano, logs_erro 6 meses
+- `app/api/cron/retencao/route.ts` — autenticado via `Bearer CRON_SECRET`
+- `vercel.json` — cron `0 3 1 * *` (dia 1 de cada mês, 03:00 UTC)
+- Retenção: análises 5 anos (+ blobs), arquivos_analise 2 anos, logs_acesso 1 ano, logs_erro 6 meses
+- Middleware: `/api/cron/*` bypassa NextAuth
 
 ### 4.4 Soft-delete de usuários ✅
 - MASTER pode desativar qualquer usuário (exceto outro MASTER)
@@ -138,8 +144,9 @@ MASTER já vê tudo de todas as unidades por design.
 - Log de auditoria: ação `usuario_desativado` registrada em `logs_acesso`
 
 ### 4.5 Registro de tratamento (interno) ✅
-- Documento listando: dados coletados, finalidade, base legal, operadores
-- Operadores: Vercel, Google (Gemini), Hetzner
+- `LGPD-REGISTRO-TRATAMENTO.md` — Art. 37 LGPD (controlador, operadores, 5 atividades, retenção)
+- Controlador: CF8 Negócios Imobiliários Ltda — CNPJ 31.399.238/0001-65
+- Operadores: Vercel (hospedagem/blob), Google LLC (Gemini), Hetzner (banco)
 
 ---
 
@@ -290,3 +297,4 @@ O Dashboard (`/consolidado`) virou o painel de controle completo do MASTER com 4
 | 7 | ERPNext no Portal | ⏳ Pendente |
 | 8 | Onboarding de Novas Unidades | ⏳ Pendente |
 | 9 | Relatórios de Imóveis, Filtros, Segurança Corretor | ✅ Concluída |
+| 10 | LGPD — Consentimento, Páginas Legais, Retenção de Dados | ✅ Concluída |
