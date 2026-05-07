@@ -9,7 +9,7 @@ import { del } from '@vercel/blob'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get('authorization')
+const auth = request.headers.get('authorization')
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
   }

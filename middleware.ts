@@ -36,6 +36,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
+  // ── Cron jobs — autenticados via Bearer token próprio, sem sessão NextAuth ─
+  if (pathname.startsWith('/api/cron')) {
+    return NextResponse.next()
+  }
+
   // ── Rotas protegidas ───────────────────────────────────────────────────────
   const token = await getToken({ req })
 
