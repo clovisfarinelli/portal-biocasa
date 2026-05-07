@@ -78,6 +78,9 @@ model Usuario {
   conviteToken     String?   @unique
   conviteExpiraEm  DateTime?
 
+  consentimentoEm  DateTime?
+  consentimentoIp  String?
+
   unidade      Unidade?   @relation(fields: [unidadeId], references: [id])
   analises     Analise[]
   logsErro     LogErro[]

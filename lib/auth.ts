@@ -64,6 +64,7 @@ export const authOptions: NextAuthOptions = {
           acessoIncorp: usuario.acessoIncorp,
           totpAtivado: usuario.totpAtivado,
           totpGraceExpiraEm: graceExpiraEm?.toISOString() ?? null,
+          consentimentoEm: usuario.consentimentoEm?.toISOString() ?? null,
         }
       },
     }),
@@ -79,7 +80,11 @@ export const authOptions: NextAuthOptions = {
     },
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }: any) {
+      // Atualiza consentimentoEm no token quando chamado via update() do useSession
+      if (trigger === 'update' && session?.consentimentoEm) {
+        token.consentimentoEm = session.consentimentoEm
+      }
       if (user) {
         token.id = user.id
         token.perfil = (user as any).perfil
@@ -89,6 +94,7 @@ export const authOptions: NextAuthOptions = {
         token.acessoIncorp = (user as any).acessoIncorp
         token.totpAtivado = (user as any).totpAtivado
         token.totpGraceExpiraEm = (user as any).totpGraceExpiraEm
+        token.consentimentoEm = (user as any).consentimentoEm
       }
       return token
     },
@@ -102,6 +108,7 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).acessoIncorp = token.acessoIncorp
         ;(session.user as any).totpAtivado = token.totpAtivado
         ;(session.user as any).totpGraceExpiraEm = token.totpGraceExpiraEm
+        ;(session.user as any).consentimentoEm = token.consentimentoEm
       }
       return session
     },

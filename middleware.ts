@@ -68,6 +68,17 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // Consentimento LGPD — obrigatório para todos os usuários autenticados
+  const ROTAS_LIVRES_CONSENTIMENTO = ['/lgpd', '/api/lgpd', '/api/auth', '/api/2fa', '/login', '/configurar-2fa']
+  const precisaConsentimento = !ROTAS_LIVRES_CONSENTIMENTO.some(r => pathname.startsWith(r))
+
+  if (precisaConsentimento && !token.consentimentoEm) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ erro: 'Aceite dos termos necessário' }, { status: 403 })
+    }
+    return NextResponse.redirect(new URL('/lgpd/consentimento', req.url))
+  }
+
   // Proteção do módulo de Imóveis
   if (!isAdmin && (pathname.startsWith('/imoveis') || pathname.startsWith('/api/imoveis'))) {
     if (!acessoImob) {
