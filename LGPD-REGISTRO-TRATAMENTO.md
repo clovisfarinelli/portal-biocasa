@@ -13,10 +13,10 @@ Não destinado à publicação.
 | Campo | Dado |
 |-------|------|
 | Razão Social | CF8 Negócios Imobiliários Ltda |
-| CNPJ | [CNPJ] |
-| Endereço | [ENDEREÇO] — Santos/SP |
+| CNPJ | 31.399.238/0001-65 |
+| Endereço | Av. Cons. Nebias, 671 — Santos/SP |
 | Responsável pelo tratamento | Clovis Farinelli |
-| Contato LGPD (DPO) | [EMAIL_DPO] |
+| Contato LGPD (DPO) | santos@biocasaimob.com.br |
 
 ---
 
@@ -106,7 +106,7 @@ Não destinado à publicação.
 | Portabilidade | Exportar análises em PDF via portal |
 
 Prazo de resposta: até 15 dias corridos após a solicitação.
-Canal: [EMAIL_DPO]
+Canal: santos@biocasaimob.com.br
 
 ---
 

@@ -136,7 +136,7 @@ export default function PoliticaPrivacidade() {
               santos@biocasaimob.com.br
             </a>
             <br />
-            CF8 Negócios Imobiliários Ltda — Av. Conselheiro Nébias, 671 — Santos/SP
+            CF8 Negócios Imobiliários Ltda — Av. Cons. Nebias, 671 — Santos/SP
           </p>
         </section>
       </div>
