@@ -57,7 +57,7 @@ export default function ConsentimentoLGPD() {
 
           <div className="flex justify-center gap-6 mb-6">
             <a
-              href="#"
+              href="/privacidade"
               target="_blank"
               rel="noopener noreferrer"
               className="text-dourado-400 text-sm underline hover:text-dourado-300 transition-colors"
@@ -65,7 +65,7 @@ export default function ConsentimentoLGPD() {
               Política de Privacidade
             </a>
             <a
-              href="#"
+              href="/termos"
               target="_blank"
               rel="noopener noreferrer"
               className="text-dourado-400 text-sm underline hover:text-dourado-300 transition-colors"

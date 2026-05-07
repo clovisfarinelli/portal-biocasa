@@ -31,6 +31,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
+  // ── Páginas legais públicas — sem auth ────────────────────────────────────
+  if (pathname.startsWith('/privacidade') || pathname.startsWith('/termos')) {
+    return NextResponse.next()
+  }
+
   // ── Rotas protegidas ───────────────────────────────────────────────────────
   const token = await getToken({ req })
 
@@ -69,7 +74,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // Consentimento LGPD — obrigatório para todos os usuários autenticados
-  const ROTAS_LIVRES_CONSENTIMENTO = ['/lgpd', '/api/lgpd', '/api/auth', '/api/2fa', '/login', '/configurar-2fa']
+  const ROTAS_LIVRES_CONSENTIMENTO = ['/lgpd', '/api/lgpd', '/api/auth', '/api/2fa', '/login', '/configurar-2fa', '/privacidade', '/termos']
   const precisaConsentimento = !ROTAS_LIVRES_CONSENTIMENTO.some(r => pathname.startsWith(r))
 
   if (precisaConsentimento && !token.consentimentoEm) {
