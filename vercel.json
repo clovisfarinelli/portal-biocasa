@@ -10,5 +10,11 @@
     "app/api/arquivos/route.ts": {
       "maxDuration": 120
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/retencao",
+      "schedule": "0 3 1 * *"
+    }
+  ]
 }
